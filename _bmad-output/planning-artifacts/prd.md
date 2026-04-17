@@ -4,7 +4,7 @@ stepsCompleted:
   - step-02-discovery.md
   - step-02b-vision.md
 workflowNext:
-  step: "2c Ã¢Â€Â” Executive Summary"
+  step: "2c - Executive Summary"
   skillStepFile: ".claude/skills/bmad-create-prd/steps-c/step-02c-executive-summary.md"
   note: "Retomar aqui: gerar e inserir o Resumo executivo no PRD (conteúdo passa a ser escrito no documento)."
 inputDocuments:
@@ -172,7 +172,7 @@ Sem ser vanity: **por tenant e por dia (ou hora)** Ã¢Â€Â” **mensagens inbound/ou
 
 - **Churn de logo:** tenant deixou de pagar / encerrou conta no período.  
 - **Churn de receita:** variação MRR atribuível a downgrade ou saída.  
-- **"Crescimento mau" (alerta):** novos logos **e** (a) **queda de utilização** (mensagens/conversas per capita) em 30Ã¢Â€Â“60 dias, ou (b) **subida de tickets de suporte críticos** / falhas de canal, ou (c) **NRR inferior a 100%** com aumento de aquisição (crescimento que não retém).  
+- **"Crescimento mau" (alerta):** novos logos **e** (a) **queda de utilização** (mensagens/conversas per capita) em 30?60 dias, ou (b) **subida de tickets de suporte críticos** / falhas de canal, ou (c) **NRR inferior a 100%** com aumento de aquisição (crescimento que não retém).  
 - **NRR** (expansão Ã¢Â€Â” churn Ã¢Â€Â” downgrade) quando houver dados de upsell.
 
 ### Limites do agente para o consumidor final (configurável)
