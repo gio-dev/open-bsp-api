@@ -1,0 +1,185 @@
+---
+stepsCompleted:
+  - step-01-init.md
+  - step-02-discovery.md
+  - step-02b-vision.md
+workflowNext:
+  step: "2c Ã¢Â€Â” Executive Summary"
+  skillStepFile: ".claude/skills/bmad-create-prd/steps-c/step-02c-executive-summary.md"
+  note: "Retomar aqui: gerar e inserir o Resumo executivo no PRD (conteúdo passa a ser escrito no documento)."
+inputDocuments:
+  - _bmad-output/planning-artifacts/product-brief-autocontrollerbot.md
+  - _bmad-output/planning-artifacts/product-brief-autocontrollerbot-distillate.md
+  - _bmad-output/planning-artifacts/research/platform-MR-DR-TR-aprofundado-2026-04-17.md
+  - _bmad-output/planning-artifacts/research/platform-openbsp-skus-MR-DR-TR-2026-04-17.md
+  - docs/index.md
+  - docs/modular/README.md
+  - docs/modular/00-caso-e-escopo.md
+  - docs/modular/01-arquitetura-reativa-visao-geral.md
+  - docs/modular/02-rotina-whatsapp-webhook.md
+  - docs/modular/03-rotina-mensagens-triggers-edge.md
+  - docs/modular/04-rotina-agent-client.md
+  - docs/modular/05-rotina-whatsapp-dispatcher.md
+  - docs/modular/06-rotina-media-preprocessor.md
+  - docs/modular/07-rotina-whatsapp-management.md
+  - docs/modular/08-rotina-mcp-servidor-api.md
+  - docs/modular/09-rotina-webhooks-saida-integracoes.md
+  - docs/modular/10-rotina-deploy-ci-billing-vault.md
+  - docs/modular/11-extensoes-rag-n8n-aprendizado.md
+  - docs/modular/12-apendice-rotas-http-e-contratos.md
+  - docs/modular/13-notify-webhook-semantica-e-riscos.md
+  - docs/modular/14-contatos-onboarding-e-rls.md
+  - docs/modular/15-mcp-servidor-catalogo-ferramentas.md
+  - docs/modular/98-party-mode-perspectivas-rota.md
+  - docs/modular/99-elicitacao-pre-mortem-e-riscos.md
+  - docs/modular/100-elicitacao-metodos-adicionais.md
+documentCounts:
+  productBriefs: 2
+  research: 2
+  brainstorming: 0
+  projectDocs: 21
+workflowType: prd
+classification:
+  projectType: saas_b2b_primary_b2c_optional
+  projectTypeNotes: >
+    Posicionamento principal B2B/B2B2B (organizações, parceiros, multitenant).
+    Uso B2C é possível mas mais raro; oferta B2C prevista para fase posterior,
+    conduzida por marketing (não é o núcleo do go-to-market inicial).
+  domain: general_horizontal
+  domainProductEmphasis: AITech
+  domainNotes: >
+    Domínio de negócio horizontal (Tech / ênfase em capacidades de IA aplicadas ao produto).
+    O primeiro cliente no setor educação é caso de uso âncora, não etiqueta de domínio do produto.
+  verticalAnchorExample: education
+  complexity: medium
+  projectContext: brownfield
+  elicitationSession: "2026-04-17 Ã¢Â€Â” Advanced Elicitation + Party Mode (classificação)"
+  partyModeSynthesis:
+    matrixRecommendation: "Domínio do produto = plataforma horizontal com ênfase AITech; educação = segmento âncora, não categoria. GTM B2B primeiro; B2C = segunda linha de venda com escopo/PRD próprio quando existir."
+    firstPrinciplesMustDocument: "Default B2B explícito; matriz titular/finalidade; entitlements que bloqueiam modo B2C sem contrato; KPIs separados se B2C entrar no roadmap."
+    investorWording: "Evitar 'AITech' vazio; preferir job-to-be-done + métricas; horizontal = multi-segmento com núcleo comum, não 'para todos'."
+    preMortemGuardrails: "Dados com legal_basis/purpose/tenant; SKUs B2B vs B2C; SLO do funil público; isolamento/RLS no canal B2C."
+  visionPartyMode2026_04_17:
+    methods: "Mary: Stakeholder Round Table; John: Socratic; Victor: Red vs Blue; Winston: What If"
+    centralTension: "Governança/compliance institucional vs agilidade operacional/integrador vs confiança do contato final."
+    wordingHardening: "Camada operacional multi-tenant para o canal; abstração e resiliência à volatilidade Meta; IA como camada opcional sobre fluxos/dados do tenant."
+    architecturalHonesty: "Meta como dependência volátil; multi-tenant vs dedicado como ofertas distintas; correção vs escala explícitas."
+  visionSocraticAnswers2026_04_17:
+    audience: "B2B inicial; clientes usam com consumidor final (B2B2C)."
+    problemMeasured: "Centralizar mensagens; reduzir trabalho manual em ERP; canal 24h; medir sem vanity."
+    killerPremise: "Integração Meta OK; agente com qualidade e custo (modelos locais/externos)."
+    successAlert: "Crescimento com churn; incapacidade de medir uso."
+    redLines: "UX; modelo de uso de agentes; regras de negócio."
+    differentiation: "Agente treinável + orquestrador de integrações vs chatbots genéricos."
+  visionAEafterAnswers2026_04_17:
+    maryRefinedBullets: 8
+    johnPRDMapAndMetrics: "Subseções mapeadas; 5 proxies mensuráveis; B2B2C exige SLAs e governança consumidor."
+    victorProofTypes: "Especificação verificável do treino; contratos de orquestração; piloto baseline vs pós."
+    winstonNFRThemes: "Confiabilidade Meta; custo/latência agente; observabilidade ponta a ponta."
+  validatedCheckpoint2026_04_17:
+    icpSizing: "Indefinido - priorizar primeiros pilotos e refinar ICP com dados."
+    mvpScope: "BSP + chatbot + painel embedded; F2 agente inteligente; F3 orquestrador (N8N ou similar)."
+    channelV1: "WhatsApp apenas; outras fontes/canais - posterior."
+    orchestrationTooling: "N8N ou similar nas fases de orquestração."
+    bmadAgentBuilderNote: "Skill repo: .cursor/skills/bmad-agent-builder - agentes BMAD no IDE; políticas do bot no produto = FRs próprios."
+---
+
+# Product Requirements Document - open-bsp-api
+
+**Autor:** GD-AGK  
+**Data:** 2026-04-17
+
+## Estado do workflow (CP / `bmad-create-prd`)
+
+- **Passo 2b (Product Vision Discovery):** concluído - visão, elicitações e checkpoint de decisões estão registados abaixo.
+- **Próximo passo:** **2c - Executive Summary** - ler e seguir o ficheiro do skill: `.claude/skills/bmad-create-prd/steps-c/step-02c-executive-summary.md` (equivalente em `.cursor/skills/bmad-create-prd/steps-c/step-02c-executive-summary.md` se usares outro perfil). Aí se **escreve** no PRD o resumo executivo com base no que já foi alinhado.
+
+Quando retomares, pede ao agente para continuar o PRD a partir do **passo 2c** (ou abre esse ficheiro de passo e segue o fluxo).
+
+---
+
+## Classificação do produto (iterada Ã¢Â€Â” input GD-AGK + Party Mode 2026-04-17)
+
+- **Tipo / GTM:** SaaS com foco **B2B e B2B2B**; **B2C possível**, mais raro, com oferta **posterior** via **marketing** (não é núcleo do go-to-market inicial).
+- **Domínio:** Plataforma **horizontal** (**Tech**, ênfase **AITech** no que o produto entrega). O primeiro cliente no **setor educação** é **âncora narrativa**, não rótulo de domínio do produto.
+- **Contexto:** **Brownfield** (núcleo OpenBSP e documentação modular no repositório).
+
+**Texto curto sugerido para o PRD (editar ao gosto):**
+
+> Plataforma multitenant de orquestração de WhatsApp, fluxos e integrações, com camada de automação e agentes supervisionados (ênfase AITech). Posicionamento comercial principal: B2B/B2B2B. Uso B2C pode existir em fases futuras, com motion e requisitos próprios; fora do escopo do núcleo até decisão explícita de release.
+
+---
+
+## Checkpoint de decisões (GD-AGK Ã¢Â€Â” 2026-04-17)
+
+### Papéis: comprador, operador, consumidor final
+
+**Intenção:** qualquer organização (ou pessoa jurídica) que necessite de mensageria e, mais tarde, do orquestrador Ã¢Â€Â” **aspiração horizontal**.
+
+**Para o PRD (mais operacional):**
+
+| Papel | Quem é | Contrato / suporte (ângulo) |
+|--------|--------|-----------------------------|
+| **Comprador** | Quem assina e paga (conta B2B). | Contrato de plataforma, SLA comercial, faturação. |
+| **Operador** | Admins e atendentes do tenant (configuram fluxos, regras, embed, futuro agente). | Suporte operacional, documentação, permissões. |
+| **Consumidor final** | Contacto no WhatsApp (cliente do teu cliente). | Experiência, opt-in/opt-out, tom e limites do bot/agente Ã¢Â€Â” responsabilidade partilhada com o tenant (controlador vs operador conforme desenho LGPD). |
+
+**Hipótese em aberto:** segmentação comercial (PME vs enterprise) fica **a definir com os primeiros pilotos**; até lá o PRD assume **multi-tenant genérico** com limites por plano.
+
+### ICP (tamanho / volume)
+
+**Estado:** não há números fixos neste momento.
+
+**Regra no PRD:** documentar **critérios de seleção dos primeiros clientes** (ex.: já usa WhatsApp oficial, tem dono para o projeto, volume suficiente para medir Ã¢Â€Â” a calibrar) em vez de faixa de receita obrigatória.
+
+### MVP vs fases (canal, automação, integrações)
+
+| Fase | Conteúdo (definição GD-AGK) |
+|------|-----------------------------|
+| **MVP** | **BSP** + **chatbot** (fluxos/regras) + **painel embedded**. Canal **só WhatsApp**. Atendimento **bot 24h com parte híbrida** (regras primeiro; humano quando aplicável). **Ações:** inicialmente por **regra** (fluxo), não por agente LLM. |
+| **Fase 2** | **Agente inteligente** (treino/uso: usabilidade, o que responder, contexto do sistema do cliente para o cliente dele). |
+| **Fase 3** | **Orquestrador de integrações** Ã¢Â€Â” **N8N ou similar** (integrações compostas). |
+
+**Nota de alinhamento:** esta cadência substitui para documentação atual qualquer roadmap anterior onde integração/orquestração apareça antes do agente; o PRD segue **esta** sequência até nova decisão explícita.
+
+### "Centralizador" vs fontes de conhecimento
+
+- **Centralizador (v1):** uma **visão unificada no produto** das conversas e estados no **WhatsApp** (inbox / histórico operacional no BSP + painel/embed) Ã¢Â€Â” **não** significa "único CRM do mundo" na v1.
+- **Outras fontes/canais:** **fora do âmbito v1**; avaliar depois.
+- **"Fonte da verdade" para o que o bot diz:** no MVP **chatbot por regras**, o conteúdo vem da **configuração que o cliente monta** (scripts, FAQs, fluxos). **Não** é obrigatoriamente treino de LLM no MVP Ã¢Â€Â” isso entra com clareza na **Fase 2**. Se a dúvida era *quem treina o agente*: **sim, o cliente (operador) com apoio do produto**, na fase em que o agente existir.
+
+### ERP / inputar / buscar (quem faz o quê)
+
+A pergunta anterior era: *que sistema atualizar primeiro e quem executa a ação?*
+
+Com a tua resposta (**ações por regra no início**), no **MVP** o desenho típico é: **regras de fluxo** disparam passos (mensagens, tags, handoff humano); **integração profunda com ERP** fica **ligada à Fase 3 (orquestrador)** salvo exceções explícitas. O PRD deve listar **uma integração piloto** quando escolheres o primeiro cliente.
+
+### KPIs de piloto (proposta para validares)
+
+Medir **antes/depois** num ou dois tenants, com baseline explícito:
+
+1. **Tempo até primeira resposta útil** (segundos/minutos; p50 e p90) Ã¢Â€Â” consumidor final.  
+2. **Taxa de conversas resolvidas só com fluxo/regra** (sem humano), quando o desenho permitir medição.  
+3. **Incidentes de integração Meta** (webhooks falhados / mensagens não entregues) por 1k mensagens Ã¢Â€Â” **confiança no canal**.  
+4. **Horas/semana** que o cliente reporta em trabalho manual **antes vs. depois** (inquerito estruturado no piloto).  
+5. A partir da **Fase 2:** **custo médio por conversa** (LLM + infra) e, se aplicável, **taxa de correção humana** (ex.: o agente errou e precisou de override).
+
+### "Uso" por tenant (observabilidade mínima v1)
+
+Sem ser vanity: **por tenant e por dia (ou hora)** Ã¢Â€Â” **mensagens inbound/outbound**, **conversas abertas/fechadas**, **handoffs para humano**, **erros de envio/API Meta**. Opcional: **tempo médio de fila** antes da primeira resposta humana.
+
+### Churn e "crescimento mau" (definições propostas)
+
+- **Churn de logo:** tenant deixou de pagar / encerrou conta no período.  
+- **Churn de receita:** variação MRR atribuível a downgrade ou saída.  
+- **"Crescimento mau" (alerta):** novos logos **e** (a) **queda de utilização** (mensagens/conversas per capita) em 30Ã¢Â€Â“60 dias, ou (b) **subida de tickets de suporte críticos** / falhas de canal, ou (c) **NRR inferior a 100%** com aumento de aquisição (crescimento que não retém).  
+- **NRR** (expansão Ã¢Â€Â” churn Ã¢Â€Â” downgrade) quando houver dados de upsell.
+
+### Limites do agente para o consumidor final (configurável)
+
+**Direção:** configurar **boa parte** Ã¢Â€Â” marca, tom, o que pode/não pode dizer, escalação, uso de dados.
+
+**Dois planos no PRD:**
+
+1. **Produto (OpenBSP / portal):** requisitos funcionais do **módulo de políticas / construtor de comportamento do bot-agente** (papéis, revisão, ambientes).  
+2. **BMAD "Agent Builder" no repositório:** o skill **`bmad-agent-builder`** (ex.: `.cursor/skills/bmad-agent-builder/SKILL.md`) serve para **criar agentes BMAD no Cursor** (documentação, skills de equipa) Ã¢Â€Â” **não** substitui a UI que o teu cliente usa para configurar o bot. Para instrução passo a passo no ecossistema BMAD de desenvolvimento, usa esse skill quando quiseres **outro agente de apoio no IDE**; para o **produto**, os requisitos ficam no PRD como **módulo de configuração do agente conversacional**.
