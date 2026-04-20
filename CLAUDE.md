@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Open BSP API — a multi-tenant WhatsApp Business Platform integration built with Deno, Postgres, and Supabase Edge Functions. See README.md for full details.
+Open BSP API: multi-tenant WhatsApp Business Platform integration. **Target:** Python/FastAPI, PostgreSQL, OAuth. **Legacy (until cutover):** Deno + Supabase Edge Functions. See README.md for full details.
 
 ## Debugging production edge functions
 

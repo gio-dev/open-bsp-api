@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>open-bsp-api ? Exploração de direções de layout (UX passo 9)</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #fff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #2563eb;
+      --rec: #059669;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      padding: 1.5rem 1.25rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    h1 { font-size: 1.15rem; margin: 0 0 0.35rem; }
+    header p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 1rem 1.25rem 2rem; }
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 640px) {
+      .grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (min-width: 960px) {
+      .grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    article {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    article.recommended {
+      border-color: var(--rec);
+      box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.25);
+    }
+    .card-head {
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .badge {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      background: #ecfdf5;
+      color: var(--rec);
+      font-weight: 700;
+    }
+    .mock {
+      padding: 0.75rem;
+      flex: 1;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.65rem;
+      color: var(--muted);
+    }
+    .row { display: flex; gap: 4px; flex: 1; min-height: 0; }
+    .box {
+      border: 1px dashed var(--border);
+      border-radius: 4px;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 4px;
+    }
+    .box.w-35 { flex: 0 0 35%; }
+    .box.w-65 { flex: 1; }
+    .box.w-30 { flex: 0 0 30%; }
+    .box.w-40 { flex: 0 0 40%; }
+    .box.w-25 { flex: 0 0 25%; }
+    .box.h-30 { height: 28%; min-height: 36px; }
+    .stack { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .note {
+      padding: 0.5rem 0.85rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+    footer {
+      padding: 1rem 1.25rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>open-bsp-api ? Direções de layout (wireframes de alto nível)</h1>
+    <p>Artefacto do passo 9 do workflow UX. Comparar hierarquia; a base recomendada para o piloto é <strong>A</strong>, com evolução para painel de regra (drawer ou 3ª coluna em desktop largo).</p>
+  </header>
+  <div class="wrap">
+    <div class="grid">
+      <article class="recommended">
+        <div class="card-head">
+          <span>A ? Split lista | thread</span>
+          <span class="badge">Recomendado MVP</span>
+        </div>
+        <div class="mock">
+          <div class="row">
+            <div class="box w-35">Lista<br/>conversas</div>
+            <div class="box w-65">Thread + composer</div>
+          </div>
+        </div>
+        <div class="note">Padrão helpdesk; melhor scan; embed com dois painéis previsíveis.</div>
+      </article>
+
+      <article>
+        <div class="card-head"><span>B ? Lista colapsável</span></div>
+        <div class="mock">
+          <div class="row">
+            <div class="box w-25" style="writing-mode:vertical-rl;text-orientation:mixed;">Lista</div>
+            <div class="box w-65">Thread máx.</div>
+          </div>
+        </div>
+        <div class="note">Liberta altura; pior varredura com lista fechada.</div>
+      </article>
+
+      <article>
+        <div class="card-head"><span>C ? 3 colunas</span></div>
+        <div class="mock">
+          <div class="row">
+            <div class="box w-30">Inbox</div>
+            <div class="box w-40">Thread</div>
+            <div class="box w-30">Regra / estado</div>
+          </div>
+        </div>
+        <div class="note">Regra sempre visível; pesado em iframe estreito.</div>
+      </article>
+
+      <article>
+        <div class="card-head"><span>D ? Dashboard + inbox</span></div>
+        <div class="mock">
+          <div class="stack">
+            <div class="box h-30">KPIs / métricas</div>
+            <div class="row" style="flex:1">
+              <div class="box w-35">Lista</div>
+              <div class="box w-65">Thread</div>
+            </div>
+          </div>
+        </div>
+        <div class="note">Camada extra antes da fila; útil pós-piloto.</div>
+      </article>
+
+      <article>
+        <div class="card-head"><span>E ? Foco thread</span></div>
+        <div class="mock">
+          <div class="row">
+            <div class="box w-25" style="font-size:0.55rem">Lista mín.</div>
+            <div class="box w-65">Thread larga</div>
+          </div>
+        </div>
+        <div class="note">Uma conversa de cada vez; fraco para volume.</div>
+      </article>
+
+      <article>
+        <div class="card-head"><span>F ? Tabela densa</span></div>
+        <div class="mock">
+          <div class="box" style="flex:1">Data grid + toolbar</div>
+        </div>
+        <div class="note">Scan tipo folha; curva para operadores não técnicos.</div>
+      </article>
+    </div>
+  </div>
+  <footer>
+    Ficheiro: <code>_bmad-output/planning-artifacts/ux-design-directions.html</code> ? referência visual; implementação em Chakra segue tokens do passo 8.
+  </footer>
+</body>
+</html>

@@ -23,11 +23,11 @@ purpose: "Contexto denso para PRD e próximas fases"
 - **Custo Meta:** começar com **repasse transparente**; **aspiração Partner** quando viável.
 - **Aprovação de agente IA:** cenários (a) só cliente B2B e (c) B2B + cliente final ? **produto flexível**.
 
-## Primeiro cliente âncora
+## Primeiro piloto (modelo genérico)
 
-- **Faculdade**; ERP **sem** integração nativa com WhatsApp.
-- Dor: **documentos de alunos** via WhatsApp **não entram no ERP automaticamente**.
-- Quem assina: **Reitoria** e/ou **TI**.
+- **Organização** (setor a definir por ICP/piloto); ERP ou sistema de registo **sem** integração nativa com WhatsApp.
+- Dor típica: **documentos ou pedidos** via WhatsApp **não entram no sistema oficial automaticamente**.
+- Quem assina: **direção/gestão** e/ou **TI** (papéis B2B habituais).
 
 ## Métricas
 
@@ -49,11 +49,11 @@ purpose: "Contexto denso para PRD e próximas fases"
 ## Ideias rejeitadas / não MVP
 
 - Integração ERP ?completa no dia um? ? **fora** do MVP explícito.
-- IA sem trilho de aprovação ? **incompatível** com narrativa de risco institucional.
+- IA sem trilho de aprovação ? **incompatível** com narrativa de risco em contexto sensível (dados de titulares, B2B2C).
 
 ## Perguntas em aberto (para PRD)
 
 - Nome comercial final.
 - **Métricas de sucesso** além de satisfação (obrigatório para contratos/compras públicas?).
 - **Fluxos por plano:** matriz exata (o que cada plano desbloqueia).
-- Integração prioritária com **qual** ERP na faculdade âncora.
+- Integração prioritária com **qual** ERP/sistema no **primeiro piloto** (depende do cliente escolhido).

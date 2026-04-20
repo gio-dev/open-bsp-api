@@ -3,7 +3,7 @@
   <strong>Open-source WhatsApp Business Platform</strong>
 </p>
 <p align="center">
-  Self-hostable, multi-tenant, AI-agent ready. Built with Deno 🦕 and powered by Supabase ⚡
+  Self-hostable, multi-tenant, AI-agent ready. <strong>Target stack:</strong> FastAPI, PostgreSQL, OAuth. Legacy: Deno + Supabase until cutover.
 </p>
 
 <p align="center">
@@ -28,7 +28,7 @@ https://github.com/user-attachments/assets/1ef30dde-9de1-4f5a-856a-db34ca2e3063
 
 ## Description
 
-OpenBSP API is a multi-tenant platform that connects to the official WhatsApp API to receive and send messages, storing them in a Supabase-backed database.
+OpenBSP API is a multi-tenant platform that connects to the official WhatsApp API to receive and send messages, persisting data in PostgreSQL via the API layer. Deployments may still use Supabase-managed Postgres during migration from the legacy stack.
 
 ### Core features
 

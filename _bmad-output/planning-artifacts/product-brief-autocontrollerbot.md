@@ -5,7 +5,7 @@ created: "2026-04-17"
 updated: "2026-04-17"
 inputs:
   - "_bmad-output/planning-artifacts/research/platform-MR-DR-TR-aprofundado-2026-04-17.md"
-  - "Conversa guiada CB (Mary) ? checklist D.2, faculdade, MVP em fases"
+  - "Conversa guiada CB (Mary) ? checklist D.2, MVP em fases (produto horizontal)"
 document_output_language: "pt-BR"
 ---
 
@@ -15,21 +15,21 @@ document_output_language: "pt-BR"
 
 O **Autocontrollerbot** é uma **plataforma multitenant** para organizações que precisam de **WhatsApp Business** com **vários atendentes e filas por setor ou categoria**, **fluxos conversacionais** (estilo chatbot com múltiplas opções, dentro do permitido pela Meta) e, em fases seguintes, **agentes de IA** e **integrações com sistemas legados** ? como **ERPs** que hoje não conversam com o WhatsApp.
 
-A **primeira narrativa de referência** é uma **faculdade** cujo **ERP** não integra com WhatsApp: **documentos enviados pelos alunos pelo canal** não chegam ao sistema académico de forma **automática**, gerando retrabalho e risco de perda de informação. O produto posiciona-se como **camada de orquestração** entre **Meta / motor de mensagens (OpenBSP como núcleo técnico)** e **processos institucionais**, com **liberação de funcionalidades por plano e por conta** ? incluindo **fluxos configuráveis** semelhantes a chatbots padrão.
+**Cenário ilustrativo (não fixa vertical):** uma **organização** cujo **ERP ou sistema de registo** não integra nativamente com WhatsApp: **documentos ou pedidos** enviados pelos **contactos** pelo canal não entram no sistema oficial de forma **automática**, gerando retrabalho e risco de perda. O produto posiciona-se como **camada de orquestração** entre **Meta / motor de mensagens (OpenBSP como núcleo técnico)** e **processos do cliente**, com **liberação de funcionalidades por plano e por conta** ? incluindo **fluxos configuráveis** semelhantes a chatbots padrão. O **primeiro piloto** pode ser em qualquer setor compatível com este padrão (serviços, institutionais, indústria leve, etc.).
 
-**Porquê agora:** adoção massiva de WhatsApp em contextos institucionais, expectativa de **automação responsável**, e espaço para **parceiros tecnológicos** que entreguem **go-live rápido** com **governança** (aprovação de agentes, LGPD no Brasil).
+**Porquê agora:** adoção massiva de WhatsApp B2B2C, expectativa de **automação responsável**, e espaço para **parceiros tecnológicos** que entreguem **go-live rápido** com **governança** (aprovação de agentes, LGPD no Brasil).
 
 ---
 
 ## O problema
 
-Instituições (e muitas empresas) **já usam WhatsApp** para falar com alunos, clientes ou cidadãos, mas o **sistema de registo oficial** (ERP, académico, protocolo) **fica à parte**. Em especial:
+Organizações **já usam WhatsApp** para falar com clientes ou cidadãos, mas o **sistema de registo oficial** (ERP, CRM interno, protocolo) **fica à parte**. Em especial:
 
-- **Documentos** chegam pelo telemóvel **sem ligação automática** ao processo certo no ERP.
-- **Várias equipas** (secretarias, setores) precisam de **partilhar o mesmo número** sem caos ? **setores/categorias** e **filas** tornam-se críticos.
-- **Automação** ?tipo chatbot? é desejável, mas **não pode ser iguais para todos**: deve ser **controlada por plano** e por **conta**, para alinhar **custo, risco e maturidade** do cliente.
+- **Documentos ou pedidos** chegam pelo telemóvel **sem ligação automática** ao processo certo no sistema de destino.
+- **Várias equipas** (setores, unidades) precisam de **partilhar o mesmo número** sem caos ? **setores/categorias** e **filas** tornam-se críticos.
+- **Automação** tipo chatbot é desejável, mas **não pode ser igual para todos**: deve ser **controlada por plano** e por **conta**, para alinhar **custo, risco e maturidade** do cliente.
 
-**Comprador que assina (âncora faculdade):** tipicamente **Reitoria** e/ou **TI** ? perfis com preocupações distintas (missão institucional vs operação e segurança).
+**Comprador que assina (B2B):** tipicamente **direção/gestão** e/ou **TI** ? perfis com preocupações distintas (negócio vs operação e segurança).
 
 ---
 
@@ -54,7 +54,7 @@ Por baixo, o desenho assume um **motor de mensagens e dados** compatível com **O
 | **Faseamento honesto** | MVP forte em **canal + fluxos + multitenant**; IA e ERP como **ondas**, não promessa única no dia um. |
 | **Brasil** | **LGPD** e **transparência de custo Meta** como princípios; **aspiração** a **Partner Meta** quando o volume e a operação justificarem. |
 
-*Vantagem competitiva realista:* **velocidade de entrega** + **pacotes** claros + **confiança** em contexto sensível (documentos, instituições).
+*Vantagem competitiva realista:* **velocidade de entrega** + **pacotes** claros + **confiança** em contexto sensível (documentos, dados de titulares).
 
 ---
 
@@ -62,11 +62,11 @@ Por baixo, o desenho assume um **motor de mensagens e dados** compatível com **O
 
 | Papel | O que precisa |
 |-------|----------------|
-| **Reitoria / direção** | Reduzir fricção e reclamações; visibilidade de atendimento. |
+| **Direção / negócio** | Reduzir fricção e reclamações; visibilidade de atendimento. |
 | **TI** | Integração controlada, segurança, **menos trabalho manual** de ponta entre canais. |
-| **Operações / secretarias** | Filas claras, fluxos, **menos erro** na triagem de documentos. |
+| **Operações / atendimento** | Filas claras, fluxos, **menos erro** na triagem de pedidos e documentos. |
 
-**Nota:** O **teu** cliente inicial é a **faculdade**; a plataforma no entanto é pensada para **reutilização** (agências, ISV, outras instituições).
+**Nota:** O **primeiro cliente piloto** é escolhido por **fit comercial e técnico**, não por setor fixo; a plataforma é pensada para **reutilização** (agências, ISV, várias organizações).
 
 ---
 
@@ -92,7 +92,7 @@ Por baixo, o desenho assume um **motor de mensagens e dados** compatível com **O
 
 ## Visão (2?3 anos)
 
-Tornar-se a **referência regional** para **?WhatsApp institucional sério?**: **multitenant**, **fluxos e IA com trilho**, **integrações modulares**, e **relação Meta** madura (**Partner** onde fizer sentido).
+Tornar-se uma **referência regional** para **WhatsApp Business operacional a sério** (B2B/B2B2C): **multitenant**, **fluxos e IA com trilho**, **integrações modulares**, e **relação Meta** madura (**Partner** onde fizer sentido).
 
 ---
 
@@ -106,16 +106,16 @@ Tornar-se a **referência regional** para **?WhatsApp institucional sério?**: **m
 
 ## Conformidade e contexto Brasil
 
-- **LGPD** para dados de alunos e interlocutores.  
+- **LGPD** para dados de titulares e interlocutores.  
 - **Políticas Meta** (templates, janelas, categorias) como **restrições de produto**, não detalhe opcional.
 
 ---
 
 ## Notas da revisão interna (painel)
 
-**Cético:** Proxies mensuráveis ficam no **PRD** (acordo com GD-AGK). **Compras públicas** em educação podem implicar **edital e prazo** ? mesmo sem prazo teu interno, o cliente pode ter **ciclo de compra longo**.  
-**Oportunidade:** **Pacote vertical ?educação?** (fluxos + checklist LGPD + integrações típicas). **Parceria com integradores do ERP** da faculdade.  
-**Mudança organizacional:** **Reitoria** e **TI** com **KPIs diferentes** ? o brief deve sustentar **dois discursos** no mesmo deck.
+**Cético:** Proxies mensuráveis ficam no **PRD** (acordo com GD-AGK). Clientes em **compras públicas** ou **enterprise** podem implicar **edital, procurement ou ciclo longo** ? mesmo sem prazo interno teu, o **cliente** pode atrasar decisão.  
+**Oportunidade:** **Pacotes de extensão vertical sob demanda** (fluxos + checklist LGPD + integrações típicas do setor, quando contratado). **Parceria com integradores do ERP/sistema do cliente** (qualquer vertical).  
+**Mudança organizacional:** **Negócio** e **TI** com **KPIs diferentes** ? o brief deve sustentar **dois discursos** no mesmo deck.
 
 ---
 
