@@ -4,6 +4,10 @@ stepsCompleted:
   - step-02-context.md
   - step-03-starter.md
   - step-04-decisions.md
+  - step-05-patterns.md
+  - step-06-structure.md
+  - step-07-validation.md
+  - step-08-complete.md
 inputDocuments:
   - _bmad-output/planning-artifacts/ux-design-specification.md
   - _bmad-output/planning-artifacts/prd.md
@@ -34,6 +38,9 @@ inputDocuments:
   - docs/modular/99-elicitacao-pre-mortem-e-riscos.md
   - docs/modular/100-elicitacao-metodos-adicionais.md
 workflowType: architecture
+lastStep: 8
+status: complete
+completedAt: '2026-04-17'
 project_name: open-bsp-api
 user_name: GD-AGK
 date: '2026-04-17'
@@ -53,10 +60,24 @@ elicitationArchitectureStep3:
 elicitationArchitectureStep4:
   methods: "Inversão de pressupostos / tradeoffs de fronteira (Mary); Party Mode (Sally, Winston, John); síntese orchestrator"
   date: "2026-04-17"
-runtimeTransition:
-  status: "Supabase (Postgres gerido + Auth + Edge Functions/Deno) é legado e será removido; a plataforma alvo é Python (FastAPI) + PostgreSQL + OAuth/OIDC, sem dependência do produto Supabase."
-  implication: "Novas decisões e implementações devem convergir para o stack Python; o que hoje vive em Edge/Deno e em APIs específicas do Supabase deve ser planeado como temporário até migração."
-  authSurfaces: "OAuth/OIDC na consola SPA. No iframe Embedded: auth à parte (tipo analytics), tipicamente JWT de curta duração assinado pela plataforma, com validação de domínio (allowlist de origens permitidas por tenant e/ou claims no token, ex. embed_origin / aud), injetado pelo host; sem OAuth completo dentro do iframe."
+elicitationArchitectureStep5:
+  methods: "Análise de conflitos agente?agente / contratos (Mary, Advanced Elicitation); Party Mode (Sally, Winston, John); síntese orchestrator"
+  date: "2026-04-17"
+elicitationArchitectureStep6:
+  methods: "Mapeamento fronteira módulo?FR / anti-confusão monorepo (Mary, Advanced Elicitation); Party Mode (Sally, Winston, John); síntese orchestrator"
+  date: "2026-04-17"
+elicitationArchitectureStep7:
+  methods: "Validação de coerência, cobertura e *readiness* (Mary, Advanced Elicitation); Party Mode (Sally, Winston, John) sobre lacunas, riscos e *handoff*; síntese orchestrator"
+  date: "2026-04-17"
+elicitationArchitectureStep8:
+  methods: "Encerramento do *workflow* e *next steps* (Mary, Advanced Elicitation); Party Mode (Sally, Winston, John) sobre *guardrails* pós-AD e *go-live* do documento; síntese orchestrator"
+  date: "2026-04-17"
+platformStack:
+  decision: "O produto é implementado **exclusivamente** com **Python 3 + FastAPI**, **PostgreSQL**, e na consola **OAuth/OIDC** como **login base** e **SSO (SAML/OIDC *enterprise*)** para **login externo**; **não** se usa **Supabase**, **Deno** nem **Edge Functions** na arquitetura de entrega."
+  excluded: "Supabase (Postgres gerido, Auth, CLI, funções), runtime Deno, e qualquer código de borda que não seja o processo FastAPI (ou *worker* Python do mesmo repositório)."
+  legacy_in_repo: "Diretórios históricos (ex. `supabase/`, *plugins* em Deno) podem existir no Git apenas como **referência** ou para **migração pontual** de esquema/dados; **proibido** adicionar funcionalidade nova aí. O *refactor* aplica-se a **reimplementar** domínio em `apps/api` (e rotas HTTP em FastAPI)."
+  authSurfaces: "Consola: **login base** via **OAuth 2.0 / OIDC**; **SSO** para **login externo** (federation com IdP do cliente, p.ex. SAML 2.0 e/ou OIDC *enterprise*). Iframe *Embedded*: **JWT** (ou equivalente) + **validação de domínio** (*allowlist* / *claims*); o detalhe do *Embedded* (variantes, rotação, opaco *vs* JWT) fica no **ADR** se existir opção *estritamente* melhor que o *baseline*."
+  multitenancy: "Isolamento **lógico** de dados: **um** repositório PostgreSQL **partilhado** (mesmo *cluster* / instância alvo) com **tenant_id** em tabelas relevantes e **RLS** onde aplicável. **Não** é modelo **\"um banco de dados (instância) por cliente/organização\"**; essa opção (silos) só por **ADR** excecional (regulatório, *noisy neighbor*, requisito contratual) com custo de *migrations*, *backup* e *pool* explícito."
 uxArchitectureAlignment:
   source: _bmad-output/planning-artifacts/ux-design-specification.md
   highlights:
@@ -82,7 +103,7 @@ Este documento constrói-se por passos; as secções acumulam-se à medida que as de
 | Área | Implicação arquitetónica |
 |------|---------------------------|
 | **Organização / tenant / WABA** | Isolamento de dados e de contexto operacional (FR1?FR4); resolução inequívoca de tenant na ingestão (FR13). |
-| **Identidade e credenciais** | OAuth/OIDC na consola (FR5); **embed**: JWT + validação de domínio (ver D2); RBAC (FR6?FR7); API keys e webhooks (FR8?FR10). |
+| **Identidade e credenciais** | Consola: **OAuth/OIDC** (login base) e **SSO** (login externo); **embed**: **JWT** + validação de domínio, ADR se houver alternativa preferível (ver D2); RBAC (FR6?FR7); API keys e webhooks (FR8?FR10). |
 | **Canal WhatsApp** | Webhooks verificados, anti-replay/frescura (FR11?FR12), envio e política de templates (FR14?FR16). |
 | **Inbox, filas, handoff** | Inbox unificada, triagem, handoff com contexto (FR17?FR21) ? exige modelo de conversação, filas e sinais **por tenant**. |
 | **Automação por regras** | Construtor, sandbox, publicação, auditoria de versões, ações disparadas (FR22?FR26); F2/F27 e F3/FR28 explícitos como fases futuras. |
@@ -116,10 +137,10 @@ Este documento constrói-se por passos; as secções acumulam-se à medida que as de
 
 ### Technical Constraints & Dependencies
 
-- **Transição de plataforma:** **Supabase (Auth, Edge/Deno, Postgres hospedado)** é **legado** e **será removido**; o **alvo** é **Python (FastAPI) + PostgreSQL + OAuth/OIDC** sem dependência do produto Supabase ? ver `runtimeTransition` no frontmatter e passos 3?4 deste documento.
-- **Brownfield:** migração para stack alvo com paridade (**MIG-parity**); a UI não promete paridade visual antes dos gates ? a arquitetura deve manter **dois runtimes** ou fases até cutover, conforme docs modulares.
+- **Stack única de entrega:** ver `platformStack` no frontmatter ? **FastAPI + PostgreSQL**; **sem Supabase, sem Deno**. Documentação em `docs/modular/` permanece como **especificação de domínio**; o código cumpre-se em **Python**.
+- **Brownfield:** se existir código antigo no repo, a paridade (**MIG-parity**) aplica-se à **reimplementação** em FastAPI, não à manutenção de runtimes excluídos.
 - **Meta como dependência:** indisponibilidade, 429, política de templates ? **fairness entre tenants** e mensagens **honestas** (UX + NFR); não assumir canal sempre saudável.
-- **Embed:** **auth distinta da consola OAuth** ? **JWT** de embed + **validação de domínio** (allowlist por tenant, claims); injeção pelo host (query/`postMessage`); sem OAuth redirect no iframe (pendentes PRD: SSO enterprise só na consola).
+- **Embed:** **auth** distinta da consola (OAuth/SSO): *baseline* **JWT** (ou token opaco) + **validação de domínio**; injeção pelo host; sem OAuth/SSO *redirect* *dentro* do iframe; **SSO** permanece no **login da consola**; ADR *Embedded* para *baseline* e variantes.
 - **LGPD:** fluxos no painel e no canal; retenção e DSAR ? modelo de dados e pipelines de exportação/eliminação.
 - **Documentação interna:** rotinas em `docs/modular/` (webhook, dispatcher, RLS, notify, etc.) são **constraints de implementação** para decisões alinhadas.
 
@@ -144,49 +165,48 @@ Este documento constrói-se por passos; as secções acumulam-se à medida que as de
 
 ## Starter Template Evaluation (passo 3)
 
-*Avaliação alinhada ao **repositório real** (`open-bsp-api`), ao README e ao **UX spec** (React + Chakra, SPA + embed). **Transição:** **Supabase será removido**; a linha de chegada é **Python (FastAPI) + PostgreSQL + OAuth** ? o que está em **Deno + Supabase** é **legado operacional** até cutover, não arquitetura alvo. **Versões npm:** confirmar no scaffold com `npm view <pacote> version`; não fixar números sem verificação local.*
+*Stack de entrega: **apenas** **FastAPI (Python)** + **PostgreSQL** + **Vite/React/Chakra** no admin. **Deno e Supabase estão excluídos** ? ver `platformStack` no frontmatter. **Versões:** `npm view` / `uv` ou `pip` no arranque do projeto; não fixar números no spec sem verificação local.*
 
 ### Primary Technology Domain
 
 | Camada | Domínio |
 |--------|---------|
-| **Borda e dados (hoje, legado)** | **Supabase Edge Functions (Deno)** + Postgres + webhooks ? materializado em `supabase/functions/*`, `config.toml`, schemas; **a substituir** por serviços **Python**. |
-| **Borda e dados (alvo)** | **FastAPI** (HTTP API, webhooks, workers/async conforme necessidade), **PostgreSQL** (instância própria ou gerida **sem** Supabase), **OAuth/OIDC**; sem runtime Supabase na plataforma. |
-| **Painel (UX spec)** | **SPA React** + **Chakra UI** + TypeScript; embutível em **iframe**; futuro **Capacitor** ? **independente** do backend ser Deno ou Python desde que o contrato REST seja estável. |
+| **API / borda** | **FastAPI**: HTTP, webhooks WhatsApp, *workers* (Celery/RQ/ARQ, etc.) conforme ADR; **um** processo app ou *workers* irmãos no mesmo repositório. |
+| **Dados** | **PostgreSQL** (instância própria ou cloud gerida **sem** Supabase); **RLS**; migrações com **Alembic**. |
+| **Painel (UX spec)** | **SPA React** + **Chakra UI** + TypeScript; **Vite**; embutível em **iframe**; **Capacitor** futuro. Consome **só** a API OpenAPI/REST. |
 
-Conclusão: há **baseline front** (Vite+Chakra) e **dois momentos de backend**: (1) **interino** ? repo atual Supabase/Deno; (2) **alvo** ? Python; o trabalho de arquitetura deve **anti-acoplar** o admin às APIs do Supabase (Auth REST proprietário, etc.) para reduzir custo da remoção.
+**Conclusão:** **não** há ?backend interino? Deno/Supabase para novas entregas. O **scaffold** alvo é **`apps/api`** (FastAPI) + **`apps/admin-web`** (Vite) no mesmo monorepo, salvo ADR a separar repositórios.
 
 ### Starter Options Considered
 
 | Opção | O que estabelece | Prós | Contras / riscos |
 |-------|------------------|------|------------------|
-| **A ? Baseline repo atual (Supabase + Deno), legado** | Funções no `config.toml`, `deno.json` (Hono, Zod, etc.) | Permite operar até migração | **Será descontinuado**; não investir em padrões que não portem para FastAPI. |
-| **B ? Vite + React + TS + Chakra UI v3** | SPA moderna, HMR, code-splitting, bundle adequado a **embed** | Bate com UX spec (Chakra, tokens, a11y); documentação Chakra oficial para **Vite** | Versões a fixar no `package.json` no init; migração v2?v3 Chakra se houver código legado. |
-| **C ? Next.js App Router** | SSR/SSG, rotas por ficheiro | Útil se SEO/marketing forem centrais | **Embed** e cookies terceiros mais complexos; UX prioriza **SPA** e iframe ? **não recomendado** como default do piloto admin. |
-| **D ? T3 / tRPC / full-stack monolith** | End-to-end types | Produtividade em greenfield | API pública e edge já têm contratos próprios; acoplamento desnecessário ao roadmap **open-bsp-api**. |
-| **E ? Companion OpenBSP UI (React + Tailwind)** | UI existente noutro repositório (README) | Referência de produto | **Desalinhado** ao UX spec atual (**Chakra**); integrar só por **padrões de API**, não como stack de componentes do piloto Chakra. |
+| **A ? Supabase / Deno (histórico)** | *Não é opção de implementação* | ? | **Excluída** ? ver `platformStack.excluded`. |
+| **B ? Vite + React + TS + Chakra UI v3** | SPA, embed, *design system* alinhado ao UX spec | Chakra oficial com Vite; a11y | Fixar versões no `package.json` ao criar. |
+| **C ? Next.js** | SSR, rotas ficheiro | SEO | Pior para embed/cookies; **não** como default. |
+| **D ? T3 / tRPC** | *Monólito* tipado | Rápido *greenfield* | Foge ao contrato REST/OpenAPI do produto. |
+| **E ? OpenBSP UI (Tailwind)** | Referência noutro repo | Inspiração | **Chakra** no spec; só padrões de API. |
 
-**Advanced Elicitation (Mary) ? alternativas não óbvias:** (1) **Monorepo** (`apps/admin`, `packages/ui`) vs repo admin separado ? trade-off CI e releases vs simplicidade; (2) **Storybook** no arranque ? útil para design system Chakra (Sally), custo de manutenção; (3) **TanStack Router** em vez de React Router ? ganho de tipos em rotas grandes; não obrigatório no MVP.
+**Advanced Elicitation (Mary):** monorepo `apps/*` **vs** repositórios separados; **uv** *vs* **Poetry** / **pip-tools** (fixar no ADR *tooling* Python); *Storybook* opcional (Sally); **TanStack Router** *vs* **React Router** (MVP: React Router).
 
 ### Selected Starter(s)
 
-**1) Borda / dados ? interino (Supabase + Deno), em vias de substituição por Python**
+**1) Backend: FastAPI (única borda de negócio)**
 
-- **Estado atual:** repositório **open-bsp-api** + **Supabase CLI** para dev local (`supabase start`, `supabase functions serve`, migrações) ? válido **até remoção do Supabase**.
-- **Alvo:** serviços **FastAPI** (e workers Python se necessário) com os mesmos contratos de negócio; **Postgres** fora do ecossistema Supabase quando a plataforma migrar.
-- **Racional:** preservar continuidade operacional enquanto se implementa paridade (**MIG-parity**) e se migra autenticação, webhooks e jobs para Python.
-
-**Inicialização local (legado ? referência Supabase):**
+- **Racional:** **OpenAPI** nativo, **Pydantic v2**, async, ecossistema Python para integração Meta, filas e LGPD.
+- **Scaffold (exemplo; ajustar à ferramenta escolhida):**
 
 ```bash
-# Válido durante a fase Supabase; revisar quando o backend Python for a única borda.
-supabase start
-supabase functions serve --env-file supabase/.env.local
+mkdir -p apps/api && cd apps/api
+# Criar pyproject com FastAPI, uvicorn[standard], SQLAlchemy ou SQLModel, Alembic, httpx, pydantic-settings
+# uv sync  OU  pip install -e .
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Decisões já presentes (a reimplementar em Python no cutover):** funções por domínio, validação na borda; **evitar** dependência forte de APIs exclusivas do Supabase no front (preferir contratos REST/OpenAPI estáveis).
+- **Webhooks, dispatcher, regras:** **routers** e **services** em `app/`, *não* ficheiros Deno.
+- **Testes:** `pytest` em `apps/api/tests/`.
 
-**2) Painel admin / embed ? Vite + React + TypeScript + Chakra UI**
+**2) Painel admin / embed: Vite + React + TypeScript + Chakra UI**
 
 - **Racional:** alinha ao **UX Design Specification** (Chakra, WCAG, split lista | thread, Drawer, tokens); **Vite** mantém SPA simples, **adequada a iframe** e a futura embalagem Capacitor sem impor SSR.
 - **Não** impor Next.js como default (opção C) para não complicar embed e política de sessão em terceiros sem necessidade explícita.
@@ -215,9 +235,8 @@ npm view react version
 
 **Linguagem e runtime**
 
-- **Borda legado:** TypeScript sob **Deno** (Edge Supabase) ? **substituível** por **Python 3.x + FastAPI** na arquitetura alvo.
-- **Borda alvo:** **FastAPI** (rotas REST, dependências tipadas, OpenAPI nativo); tarefas assíncronas/cron conforme necessidade (filas internas, Celery/RQ, etc. ? ADR quando fechar).
-- **Admin:** **TypeScript** estrito no front; alvo **ESM** (Vite).
+- **Borda (única):** **Python 3.x + FastAPI**; *workers* assíncronos (filas) em processo Python, não Deno.
+- **Admin:** **TypeScript** estrito; **Vite** + **ESM**.
 
 **Styling / UI**
 
@@ -225,17 +244,17 @@ npm view react version
 
 **Build e tooling**
 
-- **Vite:** dev server rápido, code splitting alinhado a rotas lazy (shell + inbox).
-- **Backend interino:** deploy Edge via Supabase; **backend alvo:** imagens **container** (ou equivalente) com app Python ? pipeline CI a atualizar no cutover (ver `docs/modular/10-*`).
+- **Vite:** *dev* + *build*; *code splitting* (lista \| thread, *drawer*).
+- **Backend:** *Dockerfile* + `uvicorn` / *orchestrator*; CI *lint* (Ruff), *test* (pytest), *typecheck*; ver `docs/modular/10-*` para princípios de deploy.
 
 **Testes**
 
-- Front: **Vitest** + **Testing Library** (combinação usual com Vite ? adotar no primeiro epic de qualidade).
-- Edge: testes por função / integração conforme prática do repo.
+- Front: **Vitest** + **Testing Library**.
+- API: **pytest** + *httpx* `TestClient` (ou equivalente) para rotas e serviços.
 
 **Organização de código**
 
-- **Backend:** de **funções Edge** para **módulos/serviços Python** (ou monólito modular FastAPI) ? o desenho por domínio (webhook, dispatcher, ?) mantém-se; **SPA** em árvore por features com **layout estável** + `Outlet` (UX).
+- **Backend:** **monólito modular FastAPI** (`routers/`, `services/`, `repositories/` ou padrão escolhido); domínios (webhook, dispatcher, regras, ?) como **módulos** Python; **SPA** por *features* com **layout estável** + `Outlet` (UX).
 
 **Estado e dados**
 
@@ -244,22 +263,22 @@ npm view react version
 
 ### Flow Optimization Principles (starter)
 
-- **Menos surpresas entre repos:** contratos OpenAPI/REST estáveis entre **SPA** e **edge** antes de bibliotecas full-stack mágicas.
+- **Um contrato:** **OpenAPI** gerado pelo FastAPI como fonte para o *admin* e integradores (evitar *drift*).
 - **Embed primeiro:** build Vite com `base` configurável se o admin for servido fora do origin da API.
-- **Observabilidade desde o primeiro PR:** correlation id nos clientes HTTP do painel alinhado a FR51 e UX ?recibos?.
+- **Observabilidade desde o primeiro PR:** *correlation id* nos clientes HTTP do painel (FR51, UX *recibos*).
 
 ### Advanced Elicitation + Party Mode (passo 3 ? CA)
 
-- **Exploração de alternativas (Mary):** **Vite+Chakra** permanece o starter **front**; **Supabase+Deno** é aceite só como **ponte** até **FastAPI** ? qualquer feature nova deve antecipar o contrato HTTP final em Python.
-- **Party Mode ? Sally:** o painel não deve depender do **Supabase Dashboard** nem de SDKs exclusivos no browser; **REST** estável; **OAuth** na consola; **embed** com mecanismo tipo analytics (ver `authSurfaces`).
-- **Party Mode ? Winston:** **FastAPI + OpenAPI** como alvo facilita **um** contrato para admin e integradores; Edge Deno sai sem reescrever o modelo mental por domínio.
-- **Party Mode ? John:** roadmap explícito **remover Supabase** evita débito de licença e de lock-in; métricas de piloto sobre APIs **neutras** em relação ao host.
+- **Advanced Elicitation (Mary):** **uv** *vs* **Poetry** e *layout* `app/` (evitar três estilos de *import* no mesmo repo); *webhook* como **router** FastAPI dedicado *vs* *subapp* (fixar no primeiro ADR de *routing*).
+- **Party Mode ? Sally:** o *admin* consome **só** `/v1` OpenAPI; **consola** = OAuth (base) + SSO (externo); **embed** = *Bearer* + validação de domínio (JWT *baseline*); sem *SDK* *backend* no browser.
+- **Party Mode ? Winston:** **um** `FastAPI()` (ou fábrica) com *lifespan*, *middleware* de `request_id`, CORS, *exception handlers* únicos; *workers* em módulo separado se necessário.
+- **Party Mode ? John:** *scope* = **FastAPI** + *Postgres* + *Chakra*; **Deno/Supabase fora** do *delivery*.
 
 ---
 
 ## Core Architectural Decisions (passo 4)
 
-*Decisões registadas após **Advanced Elicitation** e **Party Mode**. **Transição:** **Supabase será removido** da plataforma; o **estado alvo** é **Python (FastAPI) + PostgreSQL** (instância própria ou gerida **sem** produto Supabase). **Auth:** **OAuth/OIDC** na **consola SPA**; **iframe Embedded** com **JWT** (preferido) + **validação de domínio** (allowlist/claims), sem OAuth completo no iframe ? ver `authSurfaces`. O stack **Supabase** trata-se como **legado** até cutover. **Versões:** `npm view` para front; **Postgres** com `select version();` no ambiente alvo; **Python/FastAPI** no `pyproject` ou equivalente.*
+*Decisões alinhadas a **`platformStack`:** **só** **Python (FastAPI) + PostgreSQL**; **excluídos Supabase e Deno**. **Multitenant:** base **partilhada** + **tenant_id** + **RLS** ? ver `multitenancy` no frontmatter (não **um** banco **por** cliente, salvo ADR excecional). **Auth (consola):** **OAuth/OIDC** (login base) e **SSO** (login externo). **Auth (embed):** **JWT** + **validação de domínio**; detalhe do *Embedded* no ADR se houver opção preferível ? ver `authSurfaces`. **Versões:** `npm view` (front) e `pyproject` / ambiente (API).*
 
 ### Decision Priority Analysis
 
@@ -267,10 +286,10 @@ npm view react version
 
 | ID | Decisão | Síntese |
 |----|---------|---------|
-| **D1** | Fonte de verdade dos dados | **PostgreSQL** (persistência alvo **sem** dependência Supabase); **RLS** por tenant onde aplicável (`docs/modular/14-*`) ? feature Postgres, não do vendor. |
-| **D2** | Modelo de identidade | **OAuth/OIDC** na **consola web** (FR5). **iframe Embedded** (FR29): fluxo **distinto** ? **JWT** (preferido) ou token opaco, **curto**, assinado pela plataforma, com **validação de domínio**: *allowlist* de **origens** (domínios do site anfitrião) por tenant e/ou **claims** no JWT (`aud`, `embed_origin`, etc.); injeção pelo **host** (query/`postMessage`); sem OAuth redirect no iframe. **API keys** + webhooks (FR8?FR10). **Interino:** Supabase Auth na consola; **alvo:** OAuth/OIDC + **emisão/validação de JWT de embed** em **Python** (ADR). |
-| **D3** | Superfície de API | **REST** (HTTP JSON) como contrato principal da API pública e interna; **OpenAPI** como fonte de verdade (natural em **FastAPI**); **idempotência** em mutações (FR35); **sem GraphQL** no MVP (complexidade vs equipa). |
-| **D4** | Erros e rastreio | Corpo JSON padronizado + **`X-Request-Id` / correlation id** em 4xx/5xx (FR40, FR51, UX ?recibos?). |
+| **D1** | Fonte de verdade dos dados | **PostgreSQL** (instância(s) alvo do produto) com **um único *schema* lógico de produto** partilhado: linhas com **`tenant_id`** e **RLS** por *tenant* onde aplicável (`docs/modular/14-*`). A individualidade de cada **cliente/organização** é **lógica** (política + aplicação), **não** ?uma base *Postgres* dedicada **por** cliente? ? essa variante (silos) só com **ADR** (motivo forte: compliance, *SLA* de isolamento, etc.) e *runbook* de *ops*. Capacidade de Postgres, não de *vendor* legado. |
+| **D2** | Modelo de identidade | **Consola (FR5):** **login base** com **OAuth 2.0 / OIDC**; **login externo** com **SSO** (p.ex. **SAML 2.0** e/ou **OIDC** *enterprise*), *broker* e sessão na **app FastAPI** (ADR: fluxo, *scopes*, *mapping* de atributos). **Embed (FR29):** fluxo **separado** ? **validação de domínio** + **JWT** de curta duração (ou **token opaco** com a mesma política de *origin*); padrão exato e evolução no **ADR Embedded**, se o *baseline* não for a opção *estritamente* preferível. Sem OAuth/SSO *redirect* no *iframe*. **API keys** + webhooks (FR8?FR10); módulo Python de **emisão/validação** de credenciais *embed*. |
+| **D3** | Superfície de API | **REST** (HTTP JSON) como contrato principal da API pública e interna; **OpenAPI** como fonte de verdade (FastAPI); **idempotência** em mutações (FR35); **sem GraphQL** no MVP. |
+| **D4** | Erros e rastreio | Corpo JSON padronizado + **`X-Request-Id` / correlation id** em 4xx/5xx (FR40, FR51, UX *recibos*). |
 | **D5** | Ingestão WhatsApp | Webhooks **verificados**, **anti-replay** / frescura (FR11?FR12); resolução de **tenant** antes de regras (FR13). |
 
 **Importantes (formato da arquitetura):**
@@ -278,26 +297,28 @@ npm view react version
 | ID | Decisão | Síntese |
 |----|---------|---------|
 | **D6** | Front admin | **React Router** (rotas lazy, shell + `Outlet` alinhado ao UX), **TanStack Query v5** para estado servidor/cache e reintentos **429**; **Chakra v3** para UI. |
-| **D7** | Borda | **Interino:** **Supabase Edge (Deno)** conforme `config.toml`. **Alvo:** **FastAPI** (e workers Python conforme necessidade) como única borda de negócio; **Supabase removido** após paridade e migração de dados/auth. |
+| **D7** | Borda | **Só** **FastAPI** (e *workers* Python, filas, *cron* em processo) como borda HTTP e de negócio; **não** há Edge Deno no *delivery*. |
 | **D8** | Observabilidade | Logs estruturados + métricas por rota; correlação **pedido ? evento Meta ? entrega** para suporte N2. |
 
 **Diferidas (pós-MVP / gate explícito):**
 
 | ID | Tema | Racional |
 |----|------|----------|
-| **X1** | **Cutover Supabase ? Python** | Migração explícita: Edge/Deno e dependências Supabase **desligadas** após **MIG-parity**; Postgres e RLS **preservados** na instância alvo. |
-| **X2** | **SSO enterprise (SAML)** vs OAuth tenant | Pendente PRD; UI não assume fluxo único. |
+| **X1** | **Dados de brownfield (opcional)** | Se existir *dump* ou repositório antigo, **migração one-time** + validação de *parity*; **não** reintroduzir Supabase/Deno no runtime. |
+| **X2** | **SCIM / aprovisionamento de diretórios** | Opcional pós-piloto; *login* coberto por **OAuth (base) + SSO (externo)** antes de automatizar *lifecycle*. |
 | **X3** | **GraphQL / BFF dedicado** | Só se REST deixar de escalar em casos de uso reais. |
 | **X4** | **Message broker gerido** (Kafka, etc.) | Avaliar se filas em **Postgres** / workers Python deixarem de ser suficientes para backlog e fairness. |
 
 ### Data Architecture
 
-- **Base de dados:** **PostgreSQL** ? **alvo:** instância **independente do Supabase** (versão validada por ambiente com `select version();`).
+**Modelo multitenant (decisão explícita):** O *delivery* alvo é **base partilhada** + **`tenant_id`** + **RLS** para isolamento. **Não** está arquivado como requisito ?**um banco/instância PostgreSQL por organização cliente**?. Se no futuro um **tenant** *enterprise* exigir **silos** de dados (base ou *schema* dedicados), a alteração de modelo é **excecional** e passa por **ADR** (impacto em Alembic, *backup*, *connection pool*, custo) e alinhamento com `platformStack.multitenancy`.
+
+- **Base de dados:** **PostgreSQL** (instância gerida ou *self-hosted*); versão validada com `select version();` por ambiente.
 - **Modelagem:** esquema **relacional**; **tenant_id** e **RLS**; documentação em `docs/modular/14-contatos-onboarding-e-rls.md`.
-- **Validação:** **Interino:** Zod nas fronteiras Deno; **alvo:** **Pydantic** (v2) em FastAPI nas mesmas fronteiras ? manter equivalência de regras.
-- **Migrações:** **Enquanto Supabase existir:** fluxo `supabase/schemas/` + migrações geradas (nunca editar migrações aplicadas ? `CLAUDE.md`). **Após cutover:** **Alembic** (ou ferramenta Python acordada) como fonte de migrações; plano de transição documentado no ADR de migração.
-- **Caching:** **sem** camada Redis obrigatória no MVP; **cache HTTP** / **TanStack Query** no cliente para leituras; **freshness** da inbox guiada por NFR **OBS-fresh** (revalidação e/ou *polling* inteligente ? detalhe de transporte WebSocket fica para quando o SLO exigir).
-- **Retenção / LGPD:** políticas de retenção e DSAR (FR45?FR50) como **jobs** e estados em Postgres, não como decisão de ?starter?.
+- **Validação nas fronteiras API:** **Pydantic** (v2) + modelos reutilizáveis; *schemas* SQLAlchemy ou tabelas cruas conforme ADR.
+- **Migrações:** **Alembic** (ou ferramenta Python acordada) como *fonte* de *schema*; *snapshots* legados de `supabase/migrations/`, se existirem, só como **referência** para mapear para revisões Alembic ? **não** como pipeline de deploy ativo. Nunca editar revisões Alembic já aplicadas.
+- **Caching:** **sem** Redis obrigatório no MVP; **cache HTTP** / **TanStack Query** no cliente; *freshness* da inbox (NFR **OBS-fresh**); WebSocket *só* quando o SLO o exigir.
+- **Retenção / LGPD:** políticas de retenção e DSAR (FR45?FR50) como **jobs** e estados em Postgres.
 
 ### Authentication & Security
 
@@ -305,19 +326,20 @@ npm view react version
 
 | Superfície | Mecanismo |
 |------------|-----------|
-| **Consola / SPA** (domínio da plataforma) | **OAuth 2.0 / OIDC** ? fluxo completo no browser (FR5). **Interino:** Supabase Auth; **alvo:** app **Python** + IdP (ADR). |
-| **Painel Embedded (iframe)** | **Fora** do OAuth da consola. Modelo tipo **analytics**: o **host** injeta no iframe um **JWT** (recomendado) ou token opaco ? **curta duração**, claims de **escopo** (tenant, WABA, papel). O **backend** valida assinatura, `exp`, e **domínio**: cruzar **origem** do pedido (`Origin` / `Referer` onde aplicável) e/ou claims (`aud`, `embed_origin`) com **domínios autorizados** configurados no tenant. **Token opaco** exige validação servidor + mesma política de domínio. Sem OAuth redirect no iframe; sem cookies third-party como única base. Rotação, revogação, CSRF do embed no **ADR**. |
+| **Consola / SPA ? login base** (FR5) | **OAuth 2.0 / OIDC** (IdP da plataforma ou configurado): fluxo no *browser*; **FastAPI** + IdP (ADR: *client*, *PKCE* ou *confidential*, *scopes*). |
+| **Consola / SPA ? login externo (SSO)** | **Federation** com IdP do **cliente/tenant** (p.ex. **SAML 2.0** e/ou **OIDC** *enterprise*): *single sign-on* após ligação confiada; *broker* e registo de *session* no mesmo modelo de *backend* que o login base (ADR). Não confundir com o *mecanismo* *embed* (tabela abaixo). |
+| **Painel Embedded (iframe)** | **Fora** de OAuth/SSO com *redirect* no *iframe*. *Baseline:* **host** injeta **JWT** de **curta duração** (ou *token* opaco com política análoga) + **validação de domínio** (*Origin* / *Referer*, *allowlist*, claims `aud` / `embed_origin`). **ADR Embedded** (dedicado): fixa padrão e *alternatives* (p.ex. *opaco* *vs* *JWT* ou *rotation*) se forem *estritamente* preferíveis; sem duplicar OAuth/SSO no *iframe*. |
 
-- **Máquinas / integrações:** **API keys** com rotação e coexistência (FR8); **HMAC / segredo** em webhooks na borda (**Deno interino** ou **FastAPI alvo**).
-- **Autorização:** **RBAC** no produto (FR6?FR7); **RLS** em dados sensíveis; **break-glass** com auditoria (FR53).
-- **Segredos:** **Vault / env** por ambiente (durante Supabase: secrets da plataforma; **alvo:** secrets do runtime Python/K8s ou equivalente).
-- **Encriptação:** TLS em trânsito; repouso conforme política do **cloud/hosting** escolhido pós-Supabase.
+- **Máquinas / integrações:** **API keys** com rotação (FR8); **HMAC** em webhooks na **borda FastAPI** (rota dedicada de ingestão).
+- **Autorização:** **RBAC** (FR6?FR7); **RLS** em dados sensíveis; **break-glass** com auditoria (FR53).
+- **Segredos:** *Vault* / variáveis de ambiente do runtime (K8s, *platform* *PaaS*, etc.); **não** depender de *secrets* integrados a Supabase.
+- **Encriptação:** TLS em trânsito; repouso conforme o *cloud* escolhido.
 
 ### API & Communication Patterns
 
 - **Estilo:** **REST** + recursos versionados (FR36?FR37); documentação **OpenAPI** como contrato para integradores e para gerar clientes do admin quando útil.
 - **Erros:** formato **estável** com `code`, `message`, `request_id` / `correlation_id`; **401** ? reautenticar; **429** ? `Retry-After` quando disponível (FR40, UX).
-- **Idempotência:** chave de idempotência em operações mutáveis (envio, certas configurações) ? alinhado a FR35 e a filas Meta.
+- **Idempotência:** chave de idempotência em operações mutáveis ? alinhado a FR35 e às garantias do canal Meta.
 - **Webhooks entrada:** validação, deduplicação, ordenação **best-effort** com idempotência por ID de evento (UX jornada integrador).
 - **Webhooks saída / notify:** semântica em `docs/modular/13-notify-webhook-semantica-e-riscos.md`; não duplicar garantias que o canal Meta não oferece.
 
@@ -328,41 +350,403 @@ npm view react version
 - **Estado local:** mínimo (UI, formulários); **React Hook Form** opcional para formulários longos (UX Comfortable).
 - **Componentes:** **Chakra UI v3** + tokens semânticos; **a11y WCAG 2.1 AA** como requisito de implementação.
 - **Performance:** code-splitting Vite; **skeleton** e **empty** como estados de sistema (UX); **embed:** `base` configurável e atenção a **bundle** no iframe.
-- **Auth no front:** ramo **consola** ? **OAuth/OIDC**; ramo **embed** ? **JWT** (ou token opaco) do host + **`Authorization: Bearer`** nas APIs; **dois caminhos** no mesmo bundle (flag ou entry).
-- **Chamadas HTTP:** cliente único (fetch/ky) com **interceptor** para **correlation id** e **401/429**; no embed, **401** ? renovar JWT via host (`postMessage`), nunca redirect OAuth. A **validação de domínio** (allowlist / claims) é feita na **API**; o cliente só envia o token.
+- **Auth no front:** **consola** ? fluxos **OAuth (base)** e **SSO (externo)**; **embed** ? token do *host* (`Authorization: Bearer`); *roteamento* e *feature flags* no mesmo *bundle* (*flag* / *entry*).
+- **Chamadas HTTP:** cliente único (*fetch* / *ky*) com *interceptor* para *correlation id* e 401/429; no **embed**, **401** ? renovar JWT via *host* (`postMessage`), sem redirect OAuth. **Validação de domínio** na **API**; o cliente envia o token.
 
 ### Infrastructure & Deployment
 
-- **Hosting (interino):** **Supabase** (Postgres + Auth + Edge) ? **a descontinuar**.
-- **Hosting (alvo):** **FastAPI** (e workers) em **contentores** ou VM, com **PostgreSQL** gerido ou self-hosted; **sem** serviços proprietários Supabase no caminho crítico.
-- **Cutover:** ADR dedicado + **MIG-parity** antes de desligar Supabase; rollback documentado.
-- **CI/CD:** atualizar pipelines para **build/test/deploy Python** no alvo; enquanto houver Edge, manter deploy atual; ver `docs/modular/10-rotina-deploy-ci-billing-vault.md`; **não aplicar migrações manualmente em produção** (`CLAUDE.md`).
-- **Ambientes:** dev / staging / prod com segredos e webhooks Meta distintos; feature flags (ex. terceira coluna inbox) independentes do host.
-- **Monitorização:** **interino:** logs Edge (`CLAUDE.md`); **alvo:** logs estruturados da app Python + reverse proxy; **SLI/SLO** no Anexo A do PRD.
+- **Hosting:** aplicação **FastAPI** (*workers* se necessário) em **contentores** ou VM; **PostgreSQL** gerido ou *self-hosted*.
+- **CI/CD:** *lint* (Ruff), *test* (pytest), *build* de imagem; *deploy* separado do *admin* (Vite estático + CDN ou mesmo *origin* ? ADR). Ver `docs/modular/10-rotina-deploy-ci-billing-vault.md`; **não** aplicar *DDL* manual em *prod* fora do processo de revisões.
+- **Ambientes:** dev / staging / prod com segredos e *webhooks* Meta distintos; *feature flags* independentes do *host*.
+- **Monitorização:** logs estruturados (app + *reverse proxy*); **SLI/SLO** no anexo A do PRD; *métricas* por rota e filas.
 
 ### Decision Impact Analysis
 
 **Sequência sugerida de implementação (dependências):**
 
 1. Contratos **tenant + RLS** estáveis ? ingestão e API não vazam dados.
-2. **Autenticação** + **API keys** ? admin e integradores nos mesmos princípios.
-3. **Webhook pipeline** + **dispatcher** ? canal fechado ponta a ponta.
-4. **REST + erros + correlation** ? painel e integrações com o mesmo comportamento observável.
-5. **SPA inbox** (lista | thread) + TanStack Query ? **OBS-fresh** na prática.
+2. **Autenticação** + **API keys** ? *admin* e integradores nos mesmos princípios.
+3. **Webhook** + **dispatcher** ? canal fechado ponta a ponta.
+4. **REST** + erros + *correlation* ? painel e integrações alinhados.
+5. **SPA** *inbox* (lista | thread) + TanStack Query ? **OBS-fresh** na prática.
 
 **Dependências cruzadas:**
 
 - **TanStack Query** depende de **formato de erro** estável (D4) para não mascarar falhas.
-- **Embed** depende do **JWT de embed** + **validação de domínio** (D2), **CORS** alinhado às origens permitidas, **base URL** da API; não depender de cookies OAuth de terceiros no iframe.
-- **Fairness 429** entre tenants depende de **filas** e **política** na **borda** (Edge interino ou FastAPI alvo), não só do front.
+- **Embed** depende do **JWT de embed** + **validação de domínio** (D2), **CORS** alinhado às origens permitidas, **base URL** da API; não depender de *cookies* OAuth de terceiros no iframe.
+- **Fairness 429** entre *tenants* depende de **filas** e **política** na borda **FastAPI** / *workers*, não só do *front*.
 
 ### Advanced Elicitation + Party Mode (passo 4 ? CA)
 
-- **Inversão de pressupostos (Mary):** *E se o painel só lesse eventos já materializados?* ? reforça **pipeline assíncrono** (fila, frescura, ?recibos?) em vez de assumir leitura síncrona perfeita do estado Meta; *e se o integrador fosse o cliente principal?* ? mantém **uma** API REST idempotente e documentada (D3), evitando BFF só para o admin.
-- **Party Mode ? Sally:** **React Router** + **lazy** entrega o **split** e o **Drawer** sem recarregar o mundo; **TanStack Query** com **stale-while-revalidate** encaixa na sensação de ?mesa única? sem mentir quando o canal atrasa.
-- **Party Mode ? Winston:** fronteira única de escrita para Meta **hoje** no Edge **Deno**, **amanhã** em **FastAPI/workers Python** ? o desenho por **rotina de domínio** mantém-se; **Postgres** + **RLS** permanecem; **sem GraphQL** até prova de necessidade.
-- **Party Mode ? John:** admin e integrador no **mesmo contrato** simplifica **SLA**, suporte e narrativa de piloto; features **diferidas** (X1?X4) ficam explícitas para não **scope creep** no MVP.
+- **Inversão (Mary):** *E se o painel só lesse eventos já materializados?* ? reforça **pipeline assíncrono** (fila, frescura, *recibos*) *vs.* leitura síncrona do estado Meta; *integrador como cliente principal* ? manter **uma** API REST idempotente (D3), sem BFF só para o *admin* sem ADR.
+- **Party Mode ? Sally:** **React Router** *lazy* = *split* + *Drawer*; **TanStack Query** *stale-while-revalidate* = *mesa única* sem *overpromise* quando o canal atrasa.
+- **Party Mode ? Winston:** **uma** borda **FastAPI** (*routers* por domínio, *webhook* separado de *dispatcher*); **Postgres** + **RLS**; **sem GraphQL** até prova.
+- **Party Mode ? John:** *admin* e integrador no **mesmo** contrato OpenAPI ? SLA e suporte; X1?X4 explícitos *vs.* *scope creep*.
 
 ---
 
-<!-- Further architecture workflow steps append below -->
+## Implementation Patterns & Consistency Rules (passo 5)
+
+*Padrões para **vários agentes** implementarem de forma **compatível** com o stack: **Postgres**, **FastAPI (Python)**, **React + Chakra + TanStack Query**. Foco em **consistência**; desvios ? PR ou ADR de padrões.*
+
+### Pattern Categories Defined
+
+**Pontos críticos de conflito (onde agentes decidem diferente sem regra):** ~**18** áreas cobertas abaixo (naming, formato JSON, `tenant_id`, idempotência, logs, estados de UI, testes, rotas versionadas, *embed* vs OAuth/SSO, etc.).
+
+### Naming Patterns
+
+**Base de dados (PostgreSQL):**
+
+- Tabelas e vistas: **snake_case** plural sem prefixo de schema no nome lógico (`conversations`, `message_templates`), salvo padrão já existente no repo a migrar.
+- Colunas: **snake_case** (`tenant_id`, `waba_id`, `created_at`); chaves estrangeiras `<tabela>_id`.
+- Índices: `idx_<tabela>_<colunas_curtas>` (ex.: `idx_conversations_tenant_id_updated_at`).
+
+**API HTTP (REST pública e interna):**
+
+- Recursos: **plural** em inglês (`/v1/conversations`, `/v1/integrations/webhooks`).
+- **Versionamento** no path: prefixo **`/v1/`**; mudança de *major* ? `/v2` (FR36).
+- Parâmetros de rota: `:conversation_id` (documentação OpenAPI) / `{conversation_id}` coerente com gerador.
+- **Query string:** `snake_case` (`include_archived`, `page_size`).
+- **Cabeçalhos canónicos:** `Authorization`, `X-Request-Id` (ou `X-Correlation-Id` se único no projeto ? **um** nome fixado); **Idempotency-Key** em mutações idempotentes; **não** misturar `Idempotency-Key` e `X-Idempotency-Key`.
+
+**Código Python (FastAPI):**
+
+- Módulos e funções: **snake_case**; classes: **PascalCase**; constantes: **UPPER_SNAKE** (PEP 8).
+- Ficheiros: **snake_case** (`webhook_ingest.py`).
+
+**Código TypeScript / React (admin):**
+
+- Componentes e tipos: **PascalCase** (`InboxList.tsx`, `type ConversationRow`).
+- Ficheiros de componente: alinhar ao nome do export principal.
+- **Hooks:** `use` + **camelCase** do domínio (`useInboxConversations`).
+- **Variáveis e funções:** **camelCase**; constantes de config **UPPER_SNAKE** se globais.
+- **Rotas (React Router):** segmentos em **kebab-case** no URL (`/inbox`, `/settings/integrations`) coerentes com o menu e com deep links do UX spec.
+
+### Structure Patterns
+
+**Repositório (alvo / evolutivo):**
+
+- **Feature-first** no front: `src/features/<domínio>/` (inbox, rules, settings) com `components/`, `hooks/`, `api/`, `routes.tsx` por feature quando fizer sentido.
+- **Partilhado:** `src/shared/` (primitivos Chakra, `lib/http`, formatadores) ? evitar *dump* de utilitários na raiz.
+- **Testes front:** ficheiros `*.test.ts` / `*.test.tsx` **co-localizados** ao módulo ou `__tests__/` imediato; **Vitest** como runner (alinhado Vite).
+- **Backend Python:** pacotes por domínio (`app/ingestion/`, `app/dispatch/`, `app/api/routers/`) com routers FastAPI agregados em `app/main.py` (ou equivalente); testes em `tests/` espelhando a árvore de módulos.
+
+**Config e ambiente:**
+
+- Nunca commitar segredos; **`.env.example`** (front) e variáveis documentadas; nomes de env em **UPPER_SNAKE** (`API_BASE_URL`, `OAUTH_CLIENT_ID`).
+
+### Format Patterns
+
+**JSON nas APIs (corpo e query):**
+
+- Propriedades: **snake_case** no fio (Pydantic + Postgres + OpenAPI); o cliente TS pode mapear para **camelCase** **só** em memória de UI com *adapter* explícito ? **não** misturar os dois no mesmo objeto sem conversão.
+- Datas/hora: **ISO 8601** em string UTC com sufixo `Z` ou offset explícito (`2026-04-17T12:00:00Z`); **nunca** epoch misturado com ISO no mesmo contrato sem campo nomeado.
+- **Boolean** JSON: `true` / `false` apenas; **null** para opcional ausente.
+
+**Resposta de sucesso (REST):**
+
+- **Sem** envelope obrigatório `{"data": ...}` a menos que o OpenAPI o fixe em bloco; preferir corpo de recurso **direto** com **códigos HTTP** semânticos; listas com paginação padrão documentada: `{"items": [...], "next_cursor": ...}` (nomes em **snake_case**).
+
+**Resposta de erro (alinhado D4):**
+
+- Corpo mínimo: `{"code": "<string_estável_máquina>", "message": "<humana ou chave de i18n>", "request_id": "<uuid_ou_id>" }`; códigos HTTP conforme semântica (401, 403, 404, 409, 429, 5xx). **Códigos** reutilizáveis para suporte (John) e logs.
+
+**Idempotência:**
+
+- Mutações que exigem idempotência: **header** com nome **único** (ex. `Idempotency-Key`) + documentação; deduplicação no servidor; resposta 409 quando relevante, **não** silenciar duplicado como 200 com efeito diferente.
+
+### Communication Patterns
+
+**Eventos internos (logs, filas, métricas):**
+
+- Nomes de evento: **namespace com pontos** e segmentos estáveis (ex. `whatsapp.message.acked`) ? **uma** taxonomia; evitar `MessageAcked` vs `message_acked` em paralelo.
+- Payload: incluir `tenant_id`, `correlation_id`, `occurred_at` (ISO) quando aplicável.
+- **Webhooks** de saída: eventos e payloads alinhados a `docs/modular/13-notify-webhook-*`.
+
+**Estado no front (TanStack Query):**
+
+- Chaves de *query* como **listas** estáveis: `['conversations', tenantId, filters]`; invalidação por domínio após mutação; **não** mutar cache à mão fora padrão documentado.
+- Ações otimistas só com rollback e toasts de erro alinhados ao `code` do backend.
+
+**Embeds autenticados (domínio + JWT, D2):**
+
+- Nome e transporte do token **fixos** (`Authorization: Bearer`); claims e **validação de domínio** alinhados ao ADR *Embedded*; **nunca** trocar token por *cookie* silencioso no *iframe* como substituto de política explícita.
+
+### Process Patterns
+
+**Erros (UI + API):**
+
+- **Consola:** redirect OAuth / refresh; mensagens de erro a partir de `code` + mapeamento de copy (Sally) ? *stack traces* nunca expostos ao operador.
+- **Embed:** 401 ? renovação com **host** (`postMessage`); sem redirect OAuth.
+
+**Carregamento:**
+
+- Padrão UX: **skeleton** em listas densas, **spinner** só em ações curtas; flags `isLoading` / `isFetching` do Query **diferenciadas** onde a inbox precisa *freshness* (OBS-fresh).
+- Nomes: `isLoading` para primeira carga, `isRefetching` para segundo plano ? não inventar terceiro sinónimo no mesmo módulo.
+
+**Retries:**
+
+- `429` / rede: respeitar `Retry-After` + *backoff* com *jitter* no cliente HTTP; **sem** *retry* ilimitado.
+
+### Enforcement Guidelines
+
+**Todos os agentes DEVEM:**
+
+1. Respeitar **snake_case** no JSON de API e alinhar o OpenAPI a essa fonte.
+2. Propagar **request_id** / **correlation** do erro ao utilizador (onde o UX o permita) e aos logs.
+3. Incluir **tenant** em qualquer I/O de dados (header, *claim*, *path* ? o que o contrato fixar) **sem** deduzir só do corpo.
+4. Não introduzir **novo** padrão de nomes de tabela, evento ou cabeçalho sem atualizar **este** documento ou ADR.
+5. **Backend** = **módulos Python** por domínio; **não** adicionar runtimes alternativos (Deno, Edge) ao *delivery*; *pastas* legadas no repo, se existirem, **read-only** para migração de conceitos, não *extend*.
+
+**Verificação:** lint (Ruff, ESLint), *schema* OpenAPI em CI, *golden tests* de payload de erro; revisão de PR a olhar para esta secção.
+
+### Pattern Examples
+
+**Bom:** `GET /v1/conversations?status=open` com 200, corpo com `items` e `next_cursor` em **snake_case**; 429 com `Retry-After` e `code: "rate_limit"`.
+
+**Mau (anti-padrão):** mesmo endpoint devolver `userId` *camel* num recurso e `user_id` noutro; *retry* a enviar em loop sem ler `429`; *tenant* lido só do corpo em GET; dois nomes de cabeçalho de idempotência; logs sem `request_id`.
+
+### Registo Advanced Elicitation + Party Mode (passo 5 ? CA)
+
+- **Advanced Elicitation (Mary):** conflitos **snake (API/DB) *vs.* camel (TS)**, **versionamento** `/v1` *vs.* *header*, **idempotência** e 200/409, **timezone** e ISO, **query keys** TanStack com `tenant`, **eventos** e **códigos** de erro ? resolvidos pelas regras acima; **JWT de *embed***, **OAuth** (*consola*, login base), **SSO** (*consola*, login externo) como caminhos distintos.
+- **Party Mode ? Sally (UX):** *loading* = *skeleton* na inbox *Compact*; erros = `code` ? copy estável; *focus* no *Drawer* e na troca lista|thread.
+- **Party Mode ? Winston:** um **OpenAPI**; logs com o mesmo `request_id` que a resposta; **RLS** com política explícita.
+- **Party Mode ? John:** `code` de erro estável em tickets; SLI alinhada entre *dashboard* e API; *scope* só com padrão ou ADR.
+
+---
+
+## Project Structure & Boundaries (passo 6)
+
+*Estrutura **física** e **fronteiras** alinhadas ao repositório **open-bsp-api** (brownfield), ao *delivery* **FastAPI + Postgres + SPA** e às regras do passo 5. Árvore **típica** ? não listar ficheiro a ficheiro; o código **novo** vive em **`apps/`**.*
+
+### Complete Project Directory Structure (estado atual + alvo alinhado)
+
+**Entrega principal (alvo):**
+
+```text
+open-bsp-api/
+??? README.md
+??? CLAUDE.md                 # a atualizar se ainda referir Supabase/Deno
+??? apps/
+?   ??? admin-web/            # Vite + React + Chakra (consola + embed)
+?   ?   ??? src/
+?   ?   ?   ??? app/          # shell, router, providers
+?   ?   ?   ??? features/     # inbox, rules, settings, ?
+?   ?   ?   ??? shared/       # http, tokens Chakra, i18n
+?   ?   ??? index.html
+?   ?   ??? vite.config.ts
+?   ??? api/                  # FastAPI
+?       ??? app/
+?       ?   ??? main.py
+?       ?   ??? routers/      # v1, health, webhooks, auth, ?
+?       ?   ??? services/
+?       ?   ??? models/       # Pydantic (+ ORM se usado)
+?       ??? tests/
+?       ??? alembic/          # revisões de schema
+?       ??? Dockerfile
+?       ??? pyproject.toml
+??? docs/
+?   ??? modular/              # desenho e rotinas
+??? _bmad-output/
+    ??? planning-artifacts/
+        ??? prd.md
+        ??? architecture.md
+        ??? ux-design-specification.md
+```
+
+**Legado (opcional, só referência / migração de dados ou ideias):** pastas `supabase/`, `plugin/` (Deno), etc., se ainda existirem no *clone* ? **sem** novas *features* nem *deploy* como caminho de produto; qualquer lógica útil reimplementa-se em `apps/api/`.
+
+*Regra para agentes:* toda a **borda** e negócio novo em **`apps/api/`** e **`apps/admin-web/`**; **não** adicionar funções Deno/Edge ao pipeline de *release*.
+
+### Architectural Boundaries
+
+**API boundaries (HTTP):**
+
+| Fronteira | Conteúdo |
+|-----------|----------|
+| **Pública integrador** | `/v1/...` REST versionado; OpenAPI; 401/429/erro padronizado. |
+| **Borda da aplicação** | Uma app **FastAPI** com *routers* agregados; **um** CORS, **um** *middleware* de `request_id`, módulos de **OAuth + SSO (consola)** e de **validação *embed* (JWT + domínio, ADR)**. |
+| **Webhooks Meta (entrada)** | Router(s) dedicados (ex. `routers/webhooks.py`) ? validação, *tenant*, *dedup*; *dispatch* e regras em *services*; **não** misturar lógica de regra no *handler* HTTP sem ADR. |
+
+**Component boundaries (front, alvo):**
+
+| Zona | Função |
+|------|--------|
+| **`app/`** | Layout, *Outlet*, *providers* (Query, Chakra, auth consola vs embed). |
+| **`features/<x>/`** | Ecrãs, hooks e API client do domínio *x*; **sem** importar de `features/<y>` exceto via `shared/` ou contrato explícito. |
+| **`shared/`** | UI genérica, cliente HTTP, formatadores, tipos de erro ? **não** lógica de negócio de um só tenant. |
+
+**Data boundaries:**
+
+| Zona | Função |
+|------|--------|
+| **Postgres (schemas + RLS)** | Tabelas e políticas RLS alinhadas a `docs/modular/14-*.md`; *revisões* **Alembic** como *fonte*; *dumps* legados só para *bootstrap* de dados. |
+| **Sem DB direto no front** | *Admin* só via **API** (REST); exceção (se houver) em ADR. |
+
+**Service boundaries (lógica de canal / agentes):**
+
+- **Ingestão** (webhook) ? **normalização** ? **regras / dispatcher** ? **Meta** ? limites em `docs/modular/02-07`; integrações **MCP** / *agents* em pacotes **próprios** sob a API; **não** acoplar ao mínimo de *inbox* sem *gate* de produto.
+
+### Requirements to Structure Mapping (FR ? local conceitual)
+
+*Síntese por categorias do PRD; *epics* podem mapear 1:1 a `features/*` no *admin* e a `routers/` / `services/` na API.*
+
+| Categoria PRD | Onde vive (FastAPI + SPA) |
+|---------------|---------------------------|
+| **Org / tenant / WABA (FR1?4)** | `routers/tenants`, `routers/waba` (ou *equivalente*); *admin:* `features/settings` / `organization`. |
+| **Identidade / credenciais (FR5?10)** | `apps/api/routers/auth` (OAuth base, *brokers* SSO), `routers/integrations` (API keys); *admin:* `features/settings/integrations` + fluxos **SSO** onde o PRD exigir. |
+| **Canal WhatsApp (FR11?16)** | *Routers* e *services* de *webhook*, *dispatcher*, mensagens/templates; tabelas em Postgres. |
+| **Inbox / filas / handoff (FR17?21)** | *Services* de conversa / fila; *admin:* `features/inbox` (lista \| thread + *drawer*). |
+| **Regras / sandbox / publish (FR22?26)** | Motor de regras (pacote *service*); *admin:* `features/rules` + *drawer* *sandbox*. |
+| **Embed B2B2C (FR29?34)** | Mesmo *bundle* *admin* com *entry* *embed*; *API:* validação JWT + domínio (*middleware* ou *router* *embed*). |
+| **API pública (FR35?40)** | `apps/api`; OpenAPI gerado; `docs/modular/12-*.md` como narrativa até *doc* 100% derivada. |
+| **Medição / billing (FR41?44)** | Tabelas *billing* + *jobs*; *admin* `features/billing` se existir; `docs/modular/10-*.md`. |
+| **LGPD (FR45?50)** | *Jobs* e estados em Postgres; *admin* consentimento / DSAR. |
+| **Suporte / auditoria (FR51?54)** | *Correlation* + logs; *break-glass* em módulo **isolado** e auditável. |
+
+### Integration Points
+
+**Internos:** *admin* ? **API** (`/v1`) com contratos de erro alinhados; **FastAPI** ? **Postgres** (*driver* *async* / SQLAlchemy conforme ADR).
+
+**Externos:** **Meta** (Graph / WhatsApp), **IdP** (OAuth *login* base, **SSO** *login* externo), *webhooks* de saída (`docs/modular/13-*.md`).
+
+**Fluxo (resumo):** Meta ? *webhook* ? *persistência + fila* ? *regras* ? *resposta* / *dispatcher* ? Meta; *painel* lê via API com *tenant* e auth.
+
+### File Organization (passo 6)
+
+- **Config:** `pyproject.toml` e `apps/api/.env.example`; `vite.config.*` e `.env.example` em `apps/admin-web/`.
+- **Testes:** `apps/api/tests` (pytest); `apps/admin-web` com Vitest *co-located*.
+- **Documentação:** `docs/modular` + *OpenAPI* (export a partir de FastAPI em CI *opcional*).
+
+### Development Workflow Integration
+
+- **Local:** Postgres (Docker *ou* *dev* *cloud*), `uvicorn app.main:app` + *Vite* em paralelo.
+- **CI:** *matrix* ou *jobs* separados: API (Ruff, pytest, *image*) e *admin* (ESLint, Vitest, *build* estático) ? *não* *merge* cego de passos.
+- **Deploy:** *contentores* para `apps/api` (ADR); *assets* do *admin* em CDN / *static* *host*.
+
+### Registo Advanced Elicitation + Party Mode (passo 6 ? CA)
+
+- **Advanced Elicitation (Mary):** *fronteiras* **ingestão / dispatcher / management / integrações**; regra **não** pôr lógica de regra no *handler* de webhook ? *services*; **monorepo** `apps/*` preferido para um contrato e PRs *full-stack* estáveis.
+- **Party Mode ? Sally (UX):** `features/inbox` agrega lista+thread+*estados de sistema*; *embed* como *route* ou *query* no mesmo *app*, não segundo repositório sem ADR.
+- **Party Mode ? Winston:** *routers* finos + *services* gordos; **MCP** / *agent* isolado do SLA mínimo do canal WhatsApp.
+- **Party Mode ? John (PM):** *feature flags* mapeáveis a módulos; suporte a localizar *incidentes* por `request_id` e `tenant_id` nos logs.
+
+---
+
+## Architecture Validation & Completion (passo 7)
+
+*Validação de coerência, cobertura de requisitos e prontidão para implementação por agentes; alinhada a `step-07-validation.md` (BMAD). O passo 7 integrou **Advanced Elicitation (AE)** e **Party Mode (PM)** antes do encerramento documental.*
+
+### Coherence Validation
+
+**Compatibilidade de decisões:** O **`platformStack`** (FastAPI + PostgreSQL, sem Supabase/Deno), **`D1`?`D8`**, `X1`?`X4` e a árvore `apps/api` + `apps/admin-web` são **coerentes**: a borda é só Python; RLS e *tenant* vêm do modelo de dados; **OAuth (base)**, **SSO (externo)** e **embed** (JWT + domínio) estão **separados** e descritos em **D2** e tabelas, sem *redirect* OAuth/SSO no *iframe*.
+
+**Consistência de padrões:** *Naming* (snake JSON ? DB, convenções de rotas), *enforcement* e *Embeds* alinham-se a **D3** e **D4**; *TanStack Query* e erros estáveis reforçam o mesmo contrato *front* / API.
+
+**Alinhamento estrutural:** `apps/*`, fronteiras de *router* *vs* *service* e mapeamento FR ? pastas suportam as decisões de **passo 6** sem exigir um segundo *runtime* na entrega.
+
+### Requirements Coverage Validation
+
+**Cobertura por categorias (PRD):** As linhas de **Requirements to Structure Mapping** (passo 6) e a síntese **passo 2** cobrem org/tenant, identidade (OAuth, SSO, API keys, embed), canal WhatsApp, inbox, regras, *embed* B2B2C, API pública, *billing*, LGPD, suporte; lacunas *funcionais* conhecidas ficam em **X2**?**X4** (SCIM, GraphQL, *broker* gerido) com *gate* explícito.
+
+**NFRs:** *Observabilidade* (**D8**, *correlation*), *fairness* 429, RLS, SLI/SLO no PRD e **LGPD** têm *hooks* em dados, borda e padrões de erro; pormenor de carga/CA *stress* **não** substitui ADRs operacionais quando o piloto apertar *SLO*.
+
+### Implementation Readiness Validation
+
+**Decisões documentadas:** *Stack* e *auth* no frontmatter; *critical path* em **D1**?**D2**; versões a validar com `npm view` / `pyproject` em vez de *pin* cego no spec.
+
+**Estrutura e integrações:** Monorepo `apps/*`, Postgres, Meta, IdP; documentação viva em `docs/modular/` + OpenAPI a gerar a partir do FastAPI.
+
+**Padrões:** *Checklist* do **passo 5** (naming, erros, *tenant*, *embed*); exemplos *bom* / *mau* para *review* de PR.
+
+### Gap Analysis
+
+| Prioridade | Lacuna / nota | Mitigação |
+|------------|---------------|------------|
+| **Crítica** | Nenhum bloqueio estrutural identificado *nesta* validação, desde que **ADR** *Embedded* e fluxos **SSO** *broker* fiquem escritos **antes** de *stories* de *auth* *enterprise* | *Gate* de *epic*: ADR aprovado |
+| **Importante** | Reconciliar **histórico** `supabase/migrations` *vs* **Alembic** sem *drift* de *schema* em ambientes *brownfield* | *Runbook* de migração *one-time* + uma *fonte* de verdade (Alembic) |
+| **Importante** | **OpenAPI** exportado/validado em CI (contrato = FastAPI) | *Job* CI com `openapi.json` (ou *lint* *spectral* quando existir) |
+| **Desejável** | Testes *e2e* consola + *embed* + integrador; *load* e *chaos* além do MVP | *Backlog* pós-fecho de *MVP* |
+
+### Validation Issues Addressed (durante o passo 7)
+
+- **Coerência *auth*:** Confirmado: **login base (OAuth)**, **login externo (SSO)** e **embed** (JWT + domínio) permanecem **três** superfícies, com **SSO** na consola e **sem** *redirect* *OAuth*/*SSO* no *iframe* (*AE* reforçou o *happy path* e o *degrade*; *PM* alinhou mensagens de erro e *support*).
+- **Borda única (FastAPI):** Reafirmada exclusão de Deno/Supabase na entrega; legado *read-only* para conceitos, não *extend*.
+
+### Architecture Completeness Checklist (passo 7)
+
+**Análise de requisitos**
+
+- [x] Contexto e complexidade
+- [x] Restrições técnicas e `platformStack`
+- [x] Preocupações *cross-cutting* (tenancy, *observability*, *auth*)
+
+**Decisões arquitetónicas**
+
+- [x] Decisões críticas e *deferidas* (*X1*?*X4*)
+- [x] *Stack* e integrações (Meta, IdP, API pública)
+- [x] *Performance* / *fairness* na borda (sem números *hardcoded* no spec)
+
+**Padrões de implementação**
+
+- [x] *Naming* e formatação (JSON, DB, API)
+- [x] *Structure* e *format* *patterns*
+- [x] Erros, *idempotency*, *embed*, *enforcement*
+
+**Estrutura do projeto**
+
+- [x] Árvore *alvo* `apps/*`
+- [x] Fronteiras e mapeamento FR
+- [x] Pontos de integração explícitos
+
+### Architecture Readiness Assessment
+
+**Estado geral:** **PRONTO PARA IMPLEMENTAÇÃO** (com *gates*: ADR *Embedded*, ADR *SSO* *broker* conforme complexidade do tenant *piloto*).
+
+**Confiança:** **Alta** na *stack* e nos padrões; **média-alta** no *first* *cut* de *SSO* *enterprise* até existir *matrix* de IdPs testada.
+
+**Forças:** Um contrato OpenAPI; *multitenancy* + RLS explícitos; *embed* e consola *desacoplados*; *docs/modular* como *backbone* de domínio.
+
+**Evolução futura:** SCIM; *GraphQL*; *Kafka*; *hardening* *SLO* e *DR*; *golden* *paths* *e2e*.
+
+### Implementation Handoff
+
+**Para agentes de implementação:** Seguir `platformStack`, **D1**?**D2** (incl. **OAuth** / **SSO** / *embed*), padrões do **passo 5** e a árvore do **passo 6**; *PRs* que introduzam *novo* padrão de nomes ou de *auth* **atualizam** este ficheiro ou um **ADR** ligado.
+
+**Prioridade de arranque sugerida:** (1) *schema* *tenant* + RLS mínima + *health*; (2) *router* *auth* (OAuth base) + sessão; (3) *webhook* Meta + *dispatcher* *stub*; (4) *admin* *shell* + *OpenAPI* *client* gerado ou *handwritten* *aligned*; (5) *embed* + ADR; (6) **SSO** conforme *roadmap* do PRD *piloto*.
+
+### Registo Advanced Elicitation + Party Mode (passo 7 ? CA)
+
+- **Advanced Elicitation (Mary):** *Stress* ?e se??? na validação: **SSO** *IdP* indisponível *mid-session* ? sessão e *re-auth* na consola sem corromper API keys; **JWT** *embed* a expirar com *drawer* / *sandbox* abertos ? *refresh* via *host* (`postMessage`); **429** Meta *vs* **429** plataforma ? taxonomia de `code`; *migração* *dump* *brownfield* ? *parity checklist*. Síntese: *gaps* críticos fechados no desenho; *importantes* na tabela *Gap Analysis* (passo 7).
+- **Party Mode ? Sally (UX):** mesmo vocabulário máquina (`code`) na consola (OAuth, SSO) e no *embed*; não confundir falha de IdP com *bug* interno; a11y pós-SSO.
+- **Party Mode ? Winston (eng.):** RLS *vs* *claims*; um OpenAPI; *SSO* (SAML/OIDC) com o mesmo `request_id` / observabilidade que a API pública.
+- **Party Mode ? John (PM):** piloto e suporte partilham o mesmo contrato; Alembic *vs* legado e OpenAPI em CI no *sprint* zero; SCIM depois de OAuth, SSO e **embed** estáveis.
+
+---
+
+## Architecture Completion & Handoff (passo 8)
+
+*Última etapa do workflow* `bmad-create-architecture` (*step-08-complete*). Integrou **Advanced Elicitation (AE)** e **Party Mode (PM)** para fechar *guardrails* e *next steps* após a validação (passo 7).*
+
+### Conclusão do *workflow* de arquitetura
+
+O **CA** (*Architecture Decision Document*) do projeto **open-bsp-api** está **completo** nos passos 1 a 8: contexto, *starter* e restrições, decisões **D1**?**D8** e **X1**?**X4**, padrões de implementação, estrutura `apps/*`, **validação** (passo 7) e este **encerramento** (passo 8). O documento é a **fonte de decisão** para agentes e equipa alinhada a **FastAPI + PostgreSQL**, consola com **OAuth (base) + SSO (externo)** e **embed** (JWT + domínio, ADR *Embedded*), com **Deno/Supabase** fora do *delivery*.
+
+### Próximos passos (implementação e produto)
+
+1. **Arranque técnico:** criar/actualizar `apps/api` (FastAPI) e `apps/admin-web` (Vite) conforme o *tree* do passo 6; *health* + *schema* *tenant* + RLS; *router* *auth* (OAuth); *webhook* Meta *stub*; depois *embed* + **ADR**, e **SSO** segundo o PRD *piloto*.
+2. **ADRs em aberto (gates):** *Embedded*; *SSO* *broker* (SAML/OIDC) quando o primeiro tenant *enterprise* *exigir*; reconciliação **Alembic** *vs* histórico se existir *brownfield*.
+3. **CI:** *lint* (Ruff, ESLint), *test* (pytest, Vitest), *build*; **export** `openapi.json` a partir do FastAPI e/ou *lint* *contract* (quando existir política de *breaking changes*).
+4. **Comunidade BMAD:** após o encerramento deste ficheiro, podes invocar o skill **`bmad-help`** no Cursor para *routing* a outras tarefas (PRD, *stories*, *dev*, *review*) ou dúvidas sobre este **CA**.
+5. **Dúvidas:** qualquer questão sobre secções, **D2**, *embed*, ou limites *FastAPI* / *legado* pode ser resolvida com base neste documento e em `docs/modular/`.
+
+### Registo Advanced Elicitation + Party Mode (passo 8 ? CA)
+
+- **Advanced Elicitation (Mary):** pós-conclusão ? *e se* o repositório ainda tiver *código* legado (Deno) e *novos* *commits* a tocar nesse caminho? Regra: *read-only*; *cherry-pick* de lógica só vira PR em `apps/api`. *E se* dois ADRs (*Embedded* e *SSO*) entrarem em conflito de *scope*? Prioridade: segurança de dados *tenant* e *audit trail*; mediação num ADR *umbrella* de *auth*.
+- **Party Mode ? Sally (UX):** o CA não substitui o **UX spec**; alterações de *copy* / *tokens* *embed* *vs* consola mantêm a disciplina *code* + *i18n*; não mudar sem actualizar padrão de erros (D4).
+- **Party Mode ? Winston (eng.):** uso do CA na implementação: `platformStack` + *patterns*; evitar *parallel stacks*; *versionar* a API em `/v1` antes de *breaking changes* visíveis para integradores.
+- **Party Mode ? John (PM):** *roadmap* do *piloto* ancorado em *FR* + este CA; *stakeholder* lê *readiness* (passo 7) e *próximos passos* (passo 8); compromisso com SCIM/GraphQL só reabre o CA ou ADR, sem *scope creep* silencioso.
+
+---
+
+*Fim do workflow de arquitetura (passos 1?8). **Estado (frontmatter):** `status: complete`, `lastStep: 8`.*

@@ -1,0 +1,120 @@
+# generated: 2026-04-22T17:15:00Z
+# last_updated: 2026-04-22T17:15:00Z
+# project: open-bsp-api
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: "{project-root}/_bmad-output/implementation-artifacts"
+# fonte_epicos: _bmad-output/planning-artifacts/epics.md
+#
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: When first story moves forward (e.g. create-story)
+#   - in-progress -> done: When all stories reach 'done'
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in story_location
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Generated from epics.md (Sprint Planning [SP])
+# - Re-run [SP] when epics.md changes; preserve advanced status when the file
+#   already exists (never downgrade done to backlog)
+
+generated: "2026-04-22T17:15:00Z"
+last_updated: "2026-04-22T17:15:00Z"
+project: open-bsp-api
+project_key: NOKEY
+tracking_system: file-system
+story_location: "{project-root}/_bmad-output/implementation-artifacts"
+
+development_status:
+  epic-1: backlog
+  1-1-monorepo-alvo-saude-api-contrato-erros-minimo: backlog
+  1-2-modelo-tenant-rls-minima-prova-isolamento: backlog
+  1-3-perfil-definicoes-organizacao: backlog
+  1-4-waba-numeros-ambientes: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-oauth-oidc-login-base-consola: backlog
+  2-2-matriz-papeis-permissoes: backlog
+  2-3-chaves-api-emissao-revogacao: backlog
+  2-4-segredos-verificacao-webhooks: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-webhook-entrada-verificacao-encaminhamento: backlog
+  3-2-enviar-mensagem-saida-fila-retry: backlog
+  3-3-templates-sinais-opt-in-qualidade: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-inbox-split-lista-thread: backlog
+  4-2-etiquetas-triagem-partilhada: backlog
+  4-3-handoff-contexto-minimo: backlog
+  4-4-sinais-atraso-falha-health: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-editor-fluxos-validacao: backlog
+  5-2-sandbox-preview: backlog
+  5-3-publish-permissao-ambiente: backlog
+  5-4-versao-audit-materialidade: backlog
+  5-5-engine-aplica-acoes: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-embed-autenticado-jwt-validacao-origem: backlog
+  6-2-copy-estados-bot-humano: backlog
+  6-3-disclosure-tratamento-opt-in-granular: backlog
+  6-4-acessibilidade-embed: backlog
+  epic-6-retrospective: optional
+
+  epic-7: backlog
+  7-1-rest-versioned-idempotency: backlog
+  7-2-lifecycle-deprecation-policy: backlog
+  7-3-sandbox-tenant-scoped: backlog
+  epic-7-retrospective: optional
+
+  epic-8: backlog
+  8-1-metering-minimo: backlog
+  8-2-relatorios-valor-anti-vanity: backlog
+  8-3-entitlements-alertas: backlog
+  8-4-export-uso-faturacao: backlog
+  epic-8-retrospective: optional
+
+  epic-9: backlog
+  9-1-finalidades-bases-legais-fluxo: backlog
+  9-2-dsar-estados-ack-mvp-hibrido: backlog
+  9-3-lista-subprocessadores: backlog
+  9-4-retencao-aplicacao: backlog
+  9-5-registo-consentimento-opt-in-out: backlog
+  epic-9-retrospective: optional
+
+  epic-10: backlog
+  10-1-correlacao-classificacao-culpa: backlog
+  10-2-consulta-audit-log: backlog
+  10-3-break-glass-acoes-alto-risco: backlog
+  epic-10-retrospective: optional
+
+  epic-f2: backlog
+  f2-1-agente-inteligente-politicas: backlog
+  epic-f2-retrospective: optional
+
+  epic-f3: backlog
+  f3-1-orquestrador-n8n-integracao-piloto: backlog
+  epic-f3-retrospective: optional
