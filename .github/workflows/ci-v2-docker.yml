@@ -1,0 +1,43 @@
+# CI v2: apenas Docker (sem setup-python / setup-node no host).
+# Gates: Ruff + pytest (incl. tests/policy OpenAPI + tests/atdd), ESLint + Vitest + build.
+# Regra ATDD: qualquer teste ATDD a falhar bloqueia merge para main/develop.
+# Ver: _bmad-output/test-artifacts/V2/ci-pipeline.md
+name: CI v2 (Docker)
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "v2/**"
+      - ".github/workflows/ci-v2-docker.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "v2/**"
+      - ".github/workflows/ci-v2-docker.yml"
+
+concurrency:
+  group: ci-v2-docker-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  v2-docker-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # API: lint, unit/smoke, OpenAPI policy (tests/policy), ATDD (tests/atdd) ? um pytest falha ? merge bloqueado
+      - name: API ? Ruff, pytest (incl. policy OpenAPI + ATDD)
+        working-directory: v2
+        run: |
+          docker compose --profile ci build api-ci
+          docker compose --profile ci run --rm api-ci
+
+      - name: Admin web ? ESLint, Vitest (incl. src/atdd), build
+        working-directory: v2
+        run: |
+          docker compose --profile ci build admin-web-ci
+          docker compose --profile ci run --rm --no-deps admin-web-ci

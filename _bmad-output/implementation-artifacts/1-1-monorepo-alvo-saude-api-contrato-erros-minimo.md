@@ -1,0 +1,116 @@
+---
+story_key: 1-1-monorepo-alvo-saude-api-contrato-erros-minimo
+epic: epic-1
+status: done
+cs_completed: 2026-04-23
+vs_validated: true
+vs_date: 2026-04-23
+code_review: approved
+code_review_date: 2026-04-23
+source: _bmad-output/planning-artifacts/epics.md
+code_location: v2/apps/api, v2/apps/admin-web
+---
+
+# Story 1.1 ? Monorepo alvo, saúde da API e contrato de erros mínimo
+
+**Como** fornecedor da plataforma,  
+**quero** o scaffold `v2/apps/api` e `v2/apps/admin-web` com health e padrão de erros alinhado ao CDA,  
+**para** iniciar a entrega sem drift de runtime no legado excluído.
+
+**Nota:** o código vive em **`v2/apps/`** na raiz do repositório (decisão de pasta `v2`). O PRD/arquitetura histórica menciona `apps/`; o **path canónico de implementação** é sempre `v2/apps/`.
+
+## Acceptance Criteria
+
+- [x] FastAPI inicia com endpoint `/v1/health` (e `/v1/ready`); OpenAPI em `/docs` e `/openapi.json`.
+- [x] Erros 4xx/5xx geridos com corpo mínimo `code`, `message`, `request_id` (+ header `x-request-id`).
+- [x] CI mínima: Ruff + pytest na API; ESLint + Vitest + build no admin-web ? **via Docker** (`.github/workflows/ci-v2-docker.yml`).
+- [x] Docker: `v2/docker-compose.yml` (runtime), perfil `ci`, `docker-compose.dev.yml` para dev.
+
+## Tasks
+
+- [x] Scaffold `v2/apps/api` (FastAPI, rotas, middleware, testes).
+- [x] Scaffold `v2/apps/admin-web` (Vite, React, Chakra, Vitest, ESLint).
+- [x] Docker multi-stage (runtime, ci, dev na API; admin-ci + nginx).
+- [x] Workflow GitHub Actions só Docker.
+- [x] Atualizar `sprint-status.yaml` (esta story ? done).
+
+## Party Mode (CS) ? perspetivas sobre esta story
+
+_Roundtable sintetizado (vozes BMad) sobre lacunas e guardrails antes de considerar o contexto fechado para o epic._
+
+| Agente | Foco | Síntese |
+|--------|------|---------|
+| **Mary** (Analista) | Rastreio FR/NFR | Health + OpenAPI são *gate* para NFR-OPS e para o epic 7; erros canónicos amparam FR40 cedo. |
+| **Winston** (Arquiteto) | CDA | Tudo em `v2/` evita confusão com legado; contrato D4 (`code`, `message`, `request_id`) não deve ser quebrado nas stories seguintes. |
+| **John** (PM) | Valor | Story é *enabler*; critério de sucesso é zero *drift* para Supabase/Deno em código novo. |
+| **Sally** (UX) | Honestidade | Base para UX-DR4: cabeçalhos e JSON de erro já alinhados a *recibos* futuros. |
+| **Amelia** (Dev) | Execução | CI só Docker; dev local sem inventar `venv` nos docs de gate; pytest/Vitest já cobertos em `ci-pipeline.md`. |
+
+**Orquestrador:** consenso ? 1.1 permanece *done*; histórias 1.2+ assumem **FastAPI + `v2/apps`** como única superfície de entrega.
+
+## Advanced Elicitation (CS) ? refinamentos aplicados
+
+- **Pre-mortem:** ?Merge sem Docker? ? mitigado: workflow e README exigem compose; ?OpenAPI silenciosamente quebrado? ? mitigado: `tests/policy/test_openapi_gate.py` no CI.
+- **Red team:** ?Legado voltar a ser alvo de feature? ? story e `project-context.md` marcam *read-only*; PRs devem tocar só `v2/` para stack alvo.
+- **First principles:** um único contrato de erro reduz surpresas entre consola, embed e integradores.
+
+## Contexto para agentes (pós-implementação)
+
+### Estrutura e ficheiros-chave
+
+- API: `v2/apps/api/app/`, `tests/` (incl. `smoke/`, `policy/`, `atdd/`), `Dockerfile`, `pyproject.toml`.
+- Admin: `v2/apps/admin-web/src/` (incl. `smoke/`, `atdd/`), `Dockerfile`, `vite.config.ts`.
+- Compose: `v2/docker-compose.yml`, `v2/docker-compose.dev.yml`.
+- Qualidade: `_bmad-output/test-artifacts/V2/test-framework.md`, `ci-pipeline.md`.
+
+### Testes
+
+- Suite completa e smoke documentados; ATDD em `tests/atdd/` quando histórias o exigirem.
+
+### Referências
+
+- [Fonte: `_bmad-output/planning-artifacts/epics.md` ? Story 1.1]
+- [Fonte: `_bmad-output/planning-artifacts/architecture.md` ? Starter, platformStack]
+- [Fonte: `_bmad-output/project-context.md` ? Stack e legado]
+
+## Validate Story (VS)
+
+**Veredito:** **aprovada (retrospectiva)** ? documentação de contexto suficiente para dependências 1.2+; história já *done* e CR aprovado.
+
+### Party Mode (VS)
+
+| Agente | VS |
+|--------|-----|
+| **Winston** | Paths `v2/apps` explícitos ? mantidos como fonte de verdade para o epic. |
+| **Amelia** | Nenhum gap que exija reabrir código; follow-up opcional: logging 500. |
+| **Mary** | Rastreio a NFR-OPS/OpenAPI ? coberto por `ci-pipeline.md` e policy tests. |
+
+### Advanced Elicitation (VS)
+
+- **Pre-mortem:** ?Novo dev ignora Docker? ? mitigação: manter `v2/README.md` como onboarding obrigatório nas stories seguintes.
+
+## Code Review (Party Mode / BMad CR)
+
+| Camada | Achados |
+|--------|---------|
+| **Blind Hunter** | Nada bloqueante; logging estruturado em 500 é follow-up opcional. |
+| **Edge Case Hunter** | `HTTPException` com `detail` não-string ? `"error"`; 422 sem detalhe de campo ? conforme AC mínimo. |
+| **Acceptance Auditor** | AC e CI Docker verificados. |
+
+**Veredito:** **APROVADO**.
+
+## Dev Agent Record
+
+**Implementado:** Monorepo em `v2/`; contrato de erro canónico; testes de health/erros; admin com testes Vitest; policy OpenAPI e smoke.
+
+**CR:** Secção acima.
+
+## File List (principal)
+
+- `v2/apps/api/`, `v2/apps/admin-web/`, `v2/docker-compose*.yml`, `v2/README.md`, `.github/workflows/ci-v2-docker.yml`
+
+## Change Log
+
+- 2026-04-23: Story concluída; CR aprovado.
+- 2026-04-23: **[CS] reforçado** com Party Mode + Advanced Elicitation e contexto para continuidade do Épico 1.
+- 2026-04-23: **[VS]** validação retrospectiva; `vs_validated: true`.

@@ -1,0 +1,67 @@
+# Stack v2 ? tudo via Docker (run, CI local, producao)
+# Producao: docker compose up --build
+# Checks:   docker compose --profile ci run --rm api-ci
+#           docker compose --profile ci run --rm admin-web-ci
+# Dev:      docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+services:
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: openbsp-v2-api
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  admin-web:
+    build:
+      context: ./apps/admin-web
+      dockerfile: Dockerfile
+      target: admin-runtime
+    container_name: openbsp-v2-admin-web
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+  postgres:
+    profiles: [ci]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: openbsp_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d openbsp_test"]
+      interval: 3s
+      timeout: 5s
+      retries: 15
+
+  # Perfil "ci": nao sobe com "docker compose up" por defeito
+  api-ci:
+    profiles: [ci]
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+      target: ci
+    image: openbsp-v2-api-ci:local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://app_runtime:app_runtime_dev_only@postgres:5432/openbsp_test
+      ALEMBIC_SYNC_URL: postgresql://postgres:postgres@postgres:5432/openbsp_test
+      AUTH_DEV_STUB: "true"
+      RUN_CI_SEED: "1"
+
+  admin-web-ci:
+    profiles: [ci]
+    build:
+      context: ./apps/admin-web
+      dockerfile: Dockerfile
+      target: admin-ci
+    image: openbsp-v2-admin-web-ci:local

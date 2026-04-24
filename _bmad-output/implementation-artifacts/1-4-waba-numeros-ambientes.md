@@ -1,0 +1,165 @@
+---
+story_key: 1-4-waba-numeros-ambientes
+epic: epic-1
+status: done
+vs_validated: true
+vs_date: 2026-04-23
+atdd_ready: true
+cs_completed: 2026-04-23
+source: _bmad-output/planning-artifacts/epics.md
+depends_on:
+  - 1-2-modelo-tenant-rls-minima-prova-isolamento
+  - 1-3-perfil-definicoes-organizacao
+fr:
+  - FR2
+  - FR4
+  - FR3
+---
+
+# Story 1.4 ? WABA, números e ambientes (FR2, FR4)
+
+## Story
+
+**Como** admin do tenant,  
+**quero** registar, listar e gerir o estado de WABA(s) e número(s) e ambientes (dev/stage/prod) quando expostos,  
+**para** alinhar a operação com o modelo org ? WABA ? número sem confundir *datasets*.
+
+## Decisão de produto (VS) ? FR4 ambientes
+
+**Implementar** coluna (ou enum) **`environment`** em todas as linhas de WABA/número com valores `development` | `staging` | `production`, **default `production`**.
+
+- API e UI filtram por **ambiente ativo** do contexto (header `X-Environment` em dev ou claim pós-2.1) ? documentar no DS.
+- **Testes obrigatórios:** seed com linhas `development` e `production` no mesmo tenant; garantir que listagem ?modo produção? **não** devolve linhas de `development` (e vice-versa conforme política).
+
+*Alternativa rejeitada no VS:* adiar FR4 sem feature flag documentada ? geraria ambiguidade para ATDD.
+
+## Acceptance Criteria
+
+1. **Dado** uma organização existente, **quando** o admin associa um **WABA** e número com **IDs Meta estáveis** (`waba_id`, `phone_number_id` como *string*), **então** o estado operacional (**ativo**, **pendente**, **suspenso** ? conjunto mínimo) é **visível** e **persistido** com `tenant_id`, `environment` e **escopo** corretos (FR2, FR3).
+2. Dados `development` **não** aparecem em consultas/UI do contexto **production** e vice-versa ? prova em teste automatizado (FR4).
+3. OpenAPI atualizado; listagens com **limite** `limit`/`cursor` documentado (ex.: máx. 100 por página).
+4. **Admin web:** lista WABA/números com *badges* de estado (tokens `status.*`, UX-DR3); UX-DR4 se Meta *stub*; cabeçalho de contexto quando shell existir (UX-DR5).
+5. **Integridade:** UNIQUE `(tenant_id, phone_number_id, environment)` (ajustar se Meta permitir reutilização cross-env ? documentar exceção).
+
+## Tasks / Subtasks
+
+- [x] **Modelo** (AC: 1, 2, 5)
+  - [x] Tabela `waba_phone_numbers` (IDs Meta em string; `environment`; `status`); UNIQUE `(tenant_id, phone_number_id, environment)` na revisao **004**; indice `(tenant_id, environment)`.
+  - [x] *Nota DS:* tabela separada `whatsapp_business_accounts` nao criada neste incremento (modelo achatado com `waba_id` na linha do numero); evoluir se o dominio exigir 1:N formal.
+- [x] **API** (AC: 1?3)
+  - [x] `POST` / `GET /v1/me/waba-phone-numbers` (filtro `environment`, header `X-Environment`, default `production`); `PATCH /v1/me/waba-phone-numbers/{id}`; `limit` (1-100) + `cursor`; `409` em duplicado.
+- [x] **Integração Meta** (AC: 1, 4)
+  - [x] *Stub:* criacao com `status=pending`; UI menciona Meta stub em dev.
+- [x] **Admin web** (AC: 4)
+  - [x] Rota `/channels/waba-numbers`; lista com badges de estado; erros honestos (`role="alert"` onde aplicavel).
+- [x] **Testes** (AC: 2, 5)
+  - [x] pytest ATDD + policy OpenAPI; Vitest com mock `fetch` e badge.
+
+## Party Mode (CS) ? perspetivas
+
+| Agente | Insight |
+|--------|---------|
+| **Winston** | Nomenclatura **tenant_id** CDA; não introduzir `organization_id` paralelo sem ADR. |
+| **Mary** | FR4 **não** fica em aberto ? VS fixou implementação. |
+| **John** | Estado pendente honesto. |
+| **Sally** | Badges acessíveis. |
+| **Amelia** | IDs Meta como *string*. |
+
+## Advanced Elicitation (CS)
+
+- **Pre-mortem:** ?Número no tenant errado? ? UNIQUE + transação.
+- **Red team:** ?Listagem *cross-tenant*? ? RLS + testes.
+- **Scenario planning:** Meta indisponível ? degradação visível.
+
+## Validate Story (VS)
+
+**Veredito:** **aprovada para ATDD/DS**.
+
+### Party Mode (VS)
+
+| Agente | VS |
+|--------|-----|
+| **Mary** | Pergunta FR4 **fechada**: ambientes implementados, não *TBD*. |
+| **Winston** | UNIQUE composto e *string* IDs Meta ? nos AC/tasks. |
+| **Amelia** | Filtro explícito env em API para não depender só da UI. |
+| **Sally** | UX honesto para *stub* Meta ? AC4. |
+
+### Advanced Elicitation (VS)
+
+- **Red team:** ?Default `production` esconde `dev` rows na listagem errada? ? testes explícitos de filtro.
+- **First principles:** um modelo org ? WABA ? número ? env evita *datasets* misturados.
+
+### Checklist BMad (síntese)
+
+| Item | VS |
+|------|-----|
+| Ambiguidade FR4 | Removida |
+| Segurança | RLS + filtros |
+| ATDD | AC testáveis |
+
+## Dev Notes
+
+### Referência domínio
+
+- [Source: `docs/modular/07-rotina-whatsapp-management.md`]
+- [Source: `epics.md` ? Story 1.4]
+
+### Dependências
+
+- 1.2, 1.3.
+
+### NFRs
+
+- NFR-SEC-02; NFR-FAIR; preparação épico 3.
+
+## Testing Requirements
+
+- Postgres integração; mock só HTTP Meta.
+
+## References
+
+- `architecture.md`
+- `ux-design-specification.md`
+- `project-context.md`
+
+## Dev Agent Record
+
+### Agent Model Used
+
+Composer (Amelia / DS).
+
+### Completion Notes List
+
+- API com `dev_org_admin_context` (alinhado a 1.3); ambientes validados (`development` \| `staging` \| `production`); POST default `environment=production`; listagem default `production` se query e header ausentes.
+- Migracao **004**: deduplicacao antes do UNIQUE (volumes CI com dados antigos de ATDD).
+- Admin: lazy route + lista + badges; proxy `/v1` ja existente em Vite dev.
+- Webhook WhatsApp: BSUID (`app/whatsapp/bsuid.py`, `identity.py`), limite de corpo configuravel, teste 413, ATDD 3.1 alinhado a HMAC quando `WHATSAPP_WEBHOOK_APP_SECRET` esta definido.
+
+### File List
+
+- `v2/apps/api/alembic/versions/004_waba_unique_env_index.py`
+- `v2/apps/api/app/api/routes/me_waba.py`
+- `v2/apps/api/app/api/routes/webhooks_whatsapp.py`
+- `v2/apps/api/app/core/config.py`
+- `v2/apps/api/app/db/models_waba.py`
+- `v2/apps/api/app/whatsapp/bsuid.py`
+- `v2/apps/api/app/whatsapp/identity.py`
+- `v2/apps/api/tests/atdd/test_epic1_story14_waba_atdd.py`
+- `v2/apps/api/tests/atdd/test_epic3_story31_webhook_ingress_atdd.py`
+- `v2/apps/api/tests/policy/test_openapi_gate.py`
+- `v2/apps/api/tests/test_whatsapp_bsuid.py`
+- `v2/apps/api/tests/test_whatsapp_webhook_security.py`
+- `v2/apps/admin-web/src/App.tsx`
+- `v2/apps/admin-web/src/features/waba/WabaPhoneNumberListPage.tsx`
+- `v2/apps/admin-web/src/atdd/epic1-waba-list-page.atdd.test.tsx`
+
+---
+
+## Change Log
+
+- 2026-04-23: **[CS]**; `ready-for-dev`.
+- 2026-04-23: **[VS]**; FR4 fechado; UNIQUE + filtros; `atdd_ready: true`.
+- 2026-04-23: **[AT]** API `test_epic1_story14_waba_atdd.py`; admin `src/atdd/epic1-waba-list-page.atdd.test.tsx`.
+- 2026-04-23: **[Tracking]** CR registado por engano nesta story: o fecho de CR foi da **1.3**, nao da 1.4. Estado reposto a **`ready-for-dev`** ate DS/CR da 1.4.
+- 2026-04-23: **[DS]** entrega 1.4 (API + migracao 004 + admin + testes); `api-ci` / `admin-web-ci` verdes; estado **`review`** ate CR.
+- 2026-04-23: **[CR/DS]** correcoes Story 1.4+ (BSUID regex/normalizacao, identidade inbound, limite corpo webhook 413, env `WHATSAPP_WEBHOOK_MAX_BODY_BYTES`, testes + Ruff); `api-ci` verde; **`done`**.

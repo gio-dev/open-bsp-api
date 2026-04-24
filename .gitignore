@@ -4,6 +4,12 @@
 # Editors
 .vscode
 .zed
+.venv*
+.trae*
+.cursor*
+.ruff_cache*
+.pytest_cache*
+__pycache__*
 
 # Supabase
 supabase/.branches
@@ -11,8 +17,6 @@ supabase/.temp
 
 # Node
 node_modules
-package.json
-package-lock.json
 
 mise.toml
 

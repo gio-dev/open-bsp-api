@@ -1,0 +1,34 @@
+# Desenvolvimento (hot-reload) ? stack autonoma, sempre Docker
+# Uso: cd v2 && docker compose -f docker-compose.dev.yml up --build
+#
+# API: http://127.0.0.1:8000  |  Vite: http://127.0.0.1:5173
+
+services:
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+      target: dev
+    container_name: openbsp-v2-api-dev
+    volumes:
+      - ./apps/api/app:/app/app
+      - ./apps/api/tests:/app/tests
+    ports:
+      - "8000:8000"
+
+  admin-web-dev:
+    build:
+      context: ./apps/admin-web
+      dockerfile: Dockerfile.dev
+    container_name: openbsp-v2-admin-web-dev
+    volumes:
+      - ./apps/admin-web/src:/app/src
+      - ./apps/admin-web/index.html:/app/index.html
+      - ./apps/admin-web/vite.config.ts:/app/vite.config.ts
+      - ./apps/admin-web/tsconfig.json:/app/tsconfig.json
+      - ./apps/admin-web/tsconfig.node.json:/app/tsconfig.node.json
+      - ./apps/admin-web/eslint.config.js:/app/eslint.config.js
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api

@@ -1,0 +1,1 @@
+function e(){return{"X-Dev-Tenant-Id":"11111111-1111-4111-8111-111111111111","X-Dev-User-Id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","X-Dev-Roles":"org_admin"}}function n(a){return{headers:{...e(),...a},credentials:"same-origin"}}export{n as a};
