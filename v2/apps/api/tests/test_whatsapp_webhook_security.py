@@ -78,3 +78,23 @@ def test_post_rejects_body_over_configured_limit(
     assert r.status_code == 413
     get_settings.cache_clear()
     monkeypatch.delenv("WHATSAPP_WEBHOOK_MAX_BODY_BYTES", raising=False)
+
+
+def test_post_requires_app_secret_when_not_dev_stub(
+    client_no_lru: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AUTH_DEV_STUB", "false")
+    monkeypatch.delenv("WHATSAPP_WEBHOOK_APP_SECRET", raising=False)
+    get_settings.cache_clear()
+    body = json.dumps({"object": "whatsapp_business_account", "entry": []}).encode(
+        "utf-8"
+    )
+    r = client_no_lru.post(
+        "/v1/webhooks/whatsapp",
+        content=body,
+        headers={"Content-Type": "application/json"},
+    )
+    assert r.status_code == 503, r.text
+    get_settings.cache_clear()
+    monkeypatch.setenv("AUTH_DEV_STUB", "true")
+    get_settings.cache_clear()

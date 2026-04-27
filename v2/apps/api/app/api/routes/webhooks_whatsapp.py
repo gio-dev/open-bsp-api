@@ -6,12 +6,15 @@ import hashlib
 import hmac
 import json
 from typing import Annotated, Any
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
 
 from app.core.config import get_settings
+from app.db.session import tenant_session
 from app.whatsapp.identity import resolve_inbound_identity
+from app.whatsapp.webhook_verify_db import match_verify_token
 
 router = APIRouter(prefix="/webhooks", tags=["whatsapp_webhooks"])
 
@@ -35,10 +38,21 @@ async def whatsapp_webhook_verify(
     hub_mode: Annotated[str, Query(alias="hub.mode")],
     hub_verify_token: Annotated[str, Query(alias="hub.verify_token")],
     hub_challenge: Annotated[str, Query(alias="hub.challenge")],
+    tenant_id: UUID | None = None,
 ) -> PlainTextResponse:
     if hub_mode != "subscribe":
         raise HTTPException(status_code=400, detail="invalid hub.mode")
     settings = get_settings()
+    if tenant_id is not None:
+        if not settings.database_url:
+            raise HTTPException(
+                status_code=503, detail="database unavailable for tenant verify"
+            )
+        async with tenant_session(tenant_id) as session:
+            ok = await match_verify_token(session, tenant_id, hub_verify_token)
+        if not ok:
+            raise HTTPException(status_code=403, detail="verify token mismatch")
+        return PlainTextResponse(content=hub_challenge)
     expected = settings.whatsapp_webhook_verify_token
     if not expected or hub_verify_token != expected:
         raise HTTPException(status_code=403, detail="verify token mismatch")
@@ -54,6 +68,11 @@ async def whatsapp_webhook_ingress(request: Request) -> dict[str, str]:
         raise HTTPException(status_code=413, detail="webhook body too large")
 
     secret = settings.whatsapp_webhook_app_secret
+    if not secret and not settings.auth_dev_stub:
+        raise HTTPException(
+            status_code=503,
+            detail="WHATSAPP_WEBHOOK_APP_SECRET is required in production",
+        )
     if secret:
         sig = request.headers.get("X-Hub-Signature-256")
         if not _hub_signature_valid(body, sig, secret):

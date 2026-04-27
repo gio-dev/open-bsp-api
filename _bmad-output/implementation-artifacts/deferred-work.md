@@ -1,9 +1,30 @@
 # Deferred work (accumulated)
 
-## Deferred from: code review of 2-1-oauth-oidc-login-base-consola.md (2026-04-24)
+## Resolvido (batch 2026-04-24, follow-up crítica Épico 2)
 
-- **Metadata OIDC in-memory sem TTL:** cache `_metadata_cache` em `oidc_flow.fetch_oidc_metadata` não invalida; aceitável no MVP, rever se IdP roda rotação de issuer/JWKS frequente.
+- **Metadata OIDC in-memory sem TTL** ? `fetch_oidc_metadata` usa cache com TTL 3600s (`oidc_flow.py`).
+- **Rate-limit em `POST /v1/me/api-keys`** ? throttle 2s/tenant, desligado com `AUTH_DEV_STUB` ou `OPENBSP_SKIP_API_KEY_CREATE_THROTTLE=1`.
+- **OpenAPI** ? `auth/session` 503; `me/api-keys` 400/429; gate policy para session + api-keys + members; callback GET documenta 302.
+- **POST webhook sem `APP_SECRET`** ? fora de dev stub, 503 (configuração).
+- **Stub `X-Dev-Roles`:** filtrado por `VALID_TENANT_ROLES` (`deps.py`).
+- **Último `org_admin`:** `SELECT ... FOR UPDATE` + contagem em `me_members.py`.
+- **Throttle rotação webhook:** removido bypass genérico `PYTEST_CURRENT_TEST`; opção `OPENBSP_SKIP_WEBHOOK_ROTATE_THROTTLE=1`.
+- **UI:** `LoginPage` com mensagem por `auth_error` + `code` visível; `IntegrationsPage` lê envelope canónico em falhas.
+- **ATDD:** marcador `epic3_atdd` + `pytest -m` na imagem `ci` inclui `epic3_atdd`.
+- **match_verify_token:** `.limit(64)` na query.
+- **Sessão `/session`:** papéis filtrados a `VALID_TENANT_ROLES`; vazio => 401.
 
+## Deferred (produto / futuro, mantido)
 ## Deferred from: code review of 2-2-matriz-papeis-permissoes.md (2026-04-24)
 
-- **Emails na lista de membros:** `GET /v1/me/members` devolve email em claro; aceitável para `org_admin` no MVP; rever mascaramento ou minimização se política de dados o exigir.
+- **Emails na lista de membros:** `GET /v1/me/members` devolve email em claro; aceitável para `org_admin` no MVP; rever mascaramento se política o exigir.
+
+## Deferred from: code review of 2-3-chaves-api-emissao-revogacao.md (2026-04-24)
+
+- **Autenticacao de chamadas com API key (middleware):** dev notes; história ou epícos subsequentes.
+
+## Sessão longa / revogação de papéis na BD
+- A sessão consola ainda reflete o cookie até `exp` (~7d); revalidar contra a BD a cada request seria o endurecimento completo (história futura).
+
+## Rate-limits in-memory (várias instâncias)
+- Throttles de emissão de chave e rotação de webhook são por processo; escala horizontal exigiria loja partilhada (Redis) se NFR o exigir.

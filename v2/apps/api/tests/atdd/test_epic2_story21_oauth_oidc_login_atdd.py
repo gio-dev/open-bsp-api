@@ -3,6 +3,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
+pytestmark = [pytest.mark.atdd, pytest.mark.epic2_atdd]
+
 
 def _openapi_paths(client: TestClient) -> dict:
     r = client.get("/openapi.json")
@@ -10,7 +12,6 @@ def _openapi_paths(client: TestClient) -> dict:
     return r.json().get("paths", {})
 
 
-@pytest.mark.atdd
 def test_story_21_openapi_includes_oauth_session_routes(client: TestClient):
     """2.1: consola OAuth/OIDC - rotas auth concretas sob /v1 (CDA)."""
     paths = _openapi_paths(client)

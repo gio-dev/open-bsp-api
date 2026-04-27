@@ -3,6 +3,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
+pytestmark = [pytest.mark.atdd, pytest.mark.epic2_atdd]
+
 
 def _openapi_paths(client: TestClient) -> dict:
     r = client.get("/openapi.json")
@@ -10,7 +12,6 @@ def _openapi_paths(client: TestClient) -> dict:
     return r.json().get("paths", {})
 
 
-@pytest.mark.atdd
 def test_story_22_openapi_includes_membership_or_roles(client: TestClient):
     """2.2: API de membros por tenant (paths concretos /v1/me/members)."""
     paths = _openapi_paths(client)

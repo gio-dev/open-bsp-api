@@ -73,8 +73,7 @@ async def list_tenant_members(
         rows = res.all()
 
     items = [
-        TenantMemberItem(user_id=m.user_id, email=u.email, role=m.role)
-        for m, u in rows
+        TenantMemberItem(user_id=m.user_id, email=u.email, role=m.role) for m, u in rows
     ]
     return TenantMemberListResponse(items=items)
 
@@ -105,15 +104,27 @@ async def patch_tenant_member(
     # Uma so transaccao: membership (sem RLS) + audit_events (RLS) com o mesmo GUC.
     async with tenant_session(ctx.tenant_id) as session:
         m = await session.scalar(
-            select(TenantMembership).where(
+            select(TenantMembership)
+            .where(
                 TenantMembership.tenant_id == ctx.tenant_id,
                 TenantMembership.user_id == user_id,
             )
+            .with_for_update()
         )
         if m is None:
             raise HTTPException(status_code=404, detail="member not found")
 
         if m.role == "org_admin" and body.role != "org_admin":
+            # Lock org_admin rows; stable count.
+            await session.execute(
+                select(TenantMembership.id)
+                .where(
+                    TenantMembership.tenant_id == ctx.tenant_id,
+                    TenantMembership.role == "org_admin",
+                )
+                .order_by(TenantMembership.user_id)
+                .with_for_update()
+            )
             n = await _count_org_admins(session, ctx.tenant_id)
             if n <= 1:
                 raise HTTPException(

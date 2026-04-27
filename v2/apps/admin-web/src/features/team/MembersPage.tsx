@@ -13,8 +13,11 @@ export default function MembersPage() {
   const [draftRoles, setDraftRoles] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
 
-  const apiPath = (path: string) =>
-    `${import.meta.env.VITE_API_BASE_URL ?? ""}${path}`;
+  const apiPath = useCallback(
+    (path: string) =>
+      `${import.meta.env.VITE_API_BASE_URL ?? ""}${path}`,
+    [],
+  );
 
   const load = useCallback(async () => {
     setError(null);
@@ -47,7 +50,7 @@ export default function MembersPage() {
       setError("Network error while loading members.");
     }
     setLoading(false);
-  }, []);
+  }, [apiPath]);
 
   useEffect(() => {
     void load();

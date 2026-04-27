@@ -1,5 +1,5 @@
 # generated: 2026-04-22T17:15:00Z
-# last_updated: 2026-04-23T18:15:00Z
+# last_updated: 2026-04-27T20:55:00Z
 # project: open-bsp-api
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 #   already exists (never downgrade done to backlog)
 
 generated: "2026-04-22T17:15:00Z"
-last_updated: "2026-04-24T18:20:00Z"
+last_updated: "2026-04-27T20:55:00Z"
 project: open-bsp-api
 project_key: NOKEY
 tracking_system: file-system
@@ -52,8 +52,8 @@ development_status:
   epic-2: in-progress
   2-1-oauth-oidc-login-base-consola: done
   2-2-matriz-papeis-permissoes: done
-  2-3-chaves-api-emissao-revogacao: ready-for-dev
-  2-4-segredos-verificacao-webhooks: ready-for-dev
+  2-3-chaves-api-emissao-revogacao: done
+  2-4-segredos-verificacao-webhooks: done
   epic-2-retrospective: optional
 
   epic-3: in-progress

@@ -29,7 +29,8 @@ _WABA_ERROR_RESPONSES = {
         "model": CanonicalErrorResponse,
         "description": (
             "Acesso negado: sem contexto de tenant/sessao, ou papel insuficiente. "
-            "Post/PATCH de numeros WABA exigem org_admin (RBAC Story 2.2); GET lista com qualquer membro do tenant."
+            "Post/PATCH de numeros WABA exigem org_admin (RBAC Story 2.2); "
+            "GET lista com qualquer membro do tenant."
         ),
     },
     404: {

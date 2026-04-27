@@ -49,9 +49,7 @@ class SessionResponse(BaseModel):
 
 def _oidc_configured(settings: Any) -> bool:
     return bool(
-        settings.oidc_issuer
-        and settings.oidc_client_id
-        and settings.oidc_redirect_uri
+        settings.oidc_issuer and settings.oidc_client_id and settings.oidc_redirect_uri
     )
 
 
@@ -84,9 +82,7 @@ def _redirect_frontend_error(settings: Any, code: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=302)
 
 
-def _tenant_claim_from_token(
-    claims: dict[str, Any], claim_key: str
-) -> UUID | None:
+def _tenant_claim_from_token(claims: dict[str, Any], claim_key: str) -> UUID | None:
     raw = claims.get(claim_key)
     if raw is None or raw == "":
         return None
@@ -145,7 +141,19 @@ async def oidc_login() -> RedirectResponse:
     return resp
 
 
-@router.get("/oidc/callback")
+@router.get(
+    "/oidc/callback",
+    response_class=RedirectResponse,
+    responses={
+        302: {
+            "description": (
+                "Sucesso: redireciona para a consola com cookie de sessao. "
+                "Falha: redireciona com query `auth_error=<code>` "
+                "(ex.: idp_error, token_exchange_failed, no_org_access)."
+            ),
+        },
+    },
+)
 async def oidc_callback(
     request: Request,
     code: str | None = None,
@@ -285,6 +293,7 @@ async def oidc_callback(
     response_model=SessionResponse,
     responses={
         401: {"model": CanonicalErrorResponse},
+        503: {"model": CanonicalErrorResponse},
     },
 )
 async def auth_session(request: Request) -> SessionResponse:
@@ -310,6 +319,9 @@ async def auth_session(request: Request) -> SessionResponse:
 
     roles_raw = payload.get("roles") or []
     roles = [str(r) for r in roles_raw] if isinstance(roles_raw, list) else []
+    roles = [r for r in roles if r in VALID_TENANT_ROLES]
+    if not roles:
+        raise HTTPException(status_code=401, detail="invalid session")
     email = str(payload.get("email") or "")
     return SessionResponse(user_id=uid, tenant_id=tid, email=email, roles=roles)
 

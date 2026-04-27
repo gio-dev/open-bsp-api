@@ -1,7 +1,7 @@
 ---
 story_key: 2-4-segredos-verificacao-webhooks
 epic: epic-2
-status: ready-for-dev
+status: done
 vs_validated: true
 vs_date: 2026-04-23
 atdd_ready: true
@@ -30,10 +30,18 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ## Tasks / Subtasks
 
-- [ ] Modelo segredo(s) por tenant/WABA conforme CDA; dois valores ativos durante janela.
-- [ ] Servico de rotacao + politica de expiracao v1.
-- [ ] Validacao de assinatura em ingresso webhook (epico 3 reutiliza); esta story entrega **gestao** do segredo e endpoint rotate.
-- [ ] OpenAPI; testes; ATDD `test_epic2_story24_webhook_secrets_atdd.py`.
+- [x] Modelo segredo(s) por tenant/WABA conforme CDA; dois valores ativos durante janela.
+- [x] Servico de rotacao + politica de expiracao v1.
+- [x] Validacao de assinatura em ingresso webhook (epico 3 reutiliza); esta story entrega **gestao** do segredo e endpoint rotate.
+- [x] OpenAPI; testes; ATDD `test_epic2_story24_webhook_secrets_atdd.py`.
+
+### Post-review correcoes (2026-04-24)
+
+- [x] UI `IntegrationsPage`: copy do token Meta + truncado de `id` sem `?` espurio.
+- [x] ATDD: `GET /v1/me/webhook-secrets` no OpenAPI.
+- [x] Rate limit em `POST .../rotate` em ambientes sem `AUTH_DEV_STUB` (min. 2s por tenant); desligado em pytest e com stub.
+- [x] Migração `009`: indice unico parcial ? no maximo um `invalid_after IS NULL` por `tenant_id`.
+- [x] Integração: `test_after_coexistence_window_old_verify_token_rejected` (SQL a expirar token antigo; hub 403/200).
 
 ## Party Mode (CS) - perspetivas
 
@@ -90,11 +98,30 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ### Agent Model Used
 
-_(preencher na implementacao)_
+? (implementacao em sessao de desenvolvimento)
 
 ### Completion Notes List
 
+- Tabela `webhook_verify_secrets` (RLS), modelo `WebhookVerifySecret`, API `GET /v1/me/webhook-secrets` e `POST /v1/me/webhook-secrets/rotate` (201 com token plain uma vez, coexistencia v1/v2); GET nao expoe segredos.
+- Verificacao Meta GET: com `tenant_id` na query, match via DB; sem `tenant_id`, comportamento legado com `WHATSAPP_WEBHOOK_VERIFY_TOKEN` (ATDD 3.1/CI).
+- Admin Integracoes: bloco "Meta webhook verify token" (rotacao, copia de `tenant_id`, listagem de estado).
+- CI: `api-ci` e `admin-web-ci` a verde; ESLint `MembersPage` (apiPath estavel) sem warning.
+
 ### File List
+
+- `v2/apps/api/alembic/versions/008_webhook_verify_secrets_rls.py`
+- `v2/apps/api/alembic/versions/009_wvs_one_open_invalid_after.py`
+- `v2/apps/api/app/db/models.py` ? `WebhookVerifySecret`
+- `v2/apps/api/app/whatsapp/webhook_verify_db.py`
+- `v2/apps/api/app/api/routes/me_webhook_secrets.py`
+- `v2/apps/api/app/api/routes/webhooks_whatsapp.py`
+- `v2/apps/api/app/main.py`
+- `v2/apps/api/tests/atdd/test_epic2_story24_webhook_secrets_atdd.py`
+- `v2/apps/api/tests/integration/test_story24_webhook_verify.py`
+- `v2/apps/api/tests/test_rbac_story24_webhook_secrets.py`
+- `v2/apps/admin-web/src/features/integrations/IntegrationsPage.tsx`
+- `v2/apps/admin-web/src/features/team/MembersPage.tsx` (fix eslint useCallback)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ---
 
@@ -103,3 +130,5 @@ _(preencher na implementacao)_
 - 2026-04-23: **[CS]** story individual; Party Mode + Advanced Elicitation.
 - 2026-04-23: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-23: **[AT]** `test_epic2_story24_webhook_secrets_atdd.py`.
+- 2026-04-27: **[DS]** implementacao; sprint `2-4` -> `done`; story `status: done`; fix ESLint `MembersPage`.
+- 2026-04-24: **[PR]** correcoes pos code review (UI, ATDD, rate limit prod, mig. 009, teste integracao coexistencia).

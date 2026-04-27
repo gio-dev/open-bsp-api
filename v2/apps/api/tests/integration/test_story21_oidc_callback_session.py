@@ -8,7 +8,6 @@ import time
 import pytest
 from app.auth.session_cookie import encode_payload
 from app.core.config import get_settings
-from app.main import app
 from fastapi.testclient import TestClient
 
 pytestmark = pytest.mark.skipif(
@@ -18,7 +17,10 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.integration
-def test_oidc_callback_sets_session_cookie(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_oidc_callback_sets_session_cookie(
+    monkeypatch: pytest.MonkeyPatch,
+    client: TestClient,
+) -> None:
     import app.api.routes.auth_oidc as auth_oidc
 
     monkeypatch.setenv("OIDC_ISSUER", "http://fake-idp.test")
@@ -27,6 +29,7 @@ def test_oidc_callback_sets_session_cookie(monkeypatch: pytest.MonkeyPatch) -> N
         "OIDC_REDIRECT_URI",
         "http://localhost:5173/v1/auth/oidc/callback",
     )
+    monkeypatch.setenv("SESSION_COOKIE_SECURE", "false")
     get_settings.cache_clear()
 
     async def _fake_meta(_issuer: str) -> dict:
@@ -59,20 +62,21 @@ def test_oidc_callback_sets_session_cookie(monkeypatch: pytest.MonkeyPatch) -> N
         secret,
     )
 
-    with TestClient(app) as client:
-        client.cookies.set("obsp_oidc", hs)
-        r = client.get(
-            "/v1/auth/oidc/callback",
-            params={"code": "auth-code", "state": state},
-            follow_redirects=False,
-        )
-        assert r.status_code == 302
-        set_cookie = r.headers.get("set-cookie") or ""
-        assert "obsp_session" in set_cookie.lower()
-        s = client.get("/v1/auth/session")
-        assert s.status_code == 200
-        body = s.json()
-        assert body.get("email") == "seeded@local"
-        assert body.get("tenant_id") == "11111111-1111-4111-8111-111111111111"
+    client.cookies.clear()
+    client.cookies.set("obsp_oidc", hs)
+    r = client.get(
+        "/v1/auth/oidc/callback",
+        params={"code": "auth-code", "state": state},
+        follow_redirects=False,
+    )
+    assert r.status_code == 302
+    set_cookie = r.headers.get("set-cookie") or ""
+    assert "obsp_session" in set_cookie.lower()
+    s = client.get("/v1/auth/session")
+    assert s.status_code == 200
+    body = s.json()
+    assert body.get("email") == "seeded@local"
+    assert body.get("tenant_id") == "11111111-1111-4111-8111-111111111111"
 
+    client.cookies.clear()
     get_settings.cache_clear()

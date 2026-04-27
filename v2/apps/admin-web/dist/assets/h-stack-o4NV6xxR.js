@@ -1,0 +1,1 @@
+import{b as e,r,j as s,h as o}from"./index-DCs9JnST.js";const{withContext:c}=e({key:"badge"}),x=c("span"),n=r.forwardRef(function(t,a){return s.jsx(o,{align:"center",...t,direction:"row",ref:a})});n.displayName="HStack";export{x as B,n as H};

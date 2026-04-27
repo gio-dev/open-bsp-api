@@ -80,8 +80,70 @@ def test_me_organization_documents_error_envelope(client):
             assert key in props422, f"422 must include {key} (got {props422!r})"
 
 
+def _assert_error_envelope_fields(spec: dict, schema: dict) -> None:
+    if schema.get("type") == "object":
+        props = schema.get("properties") or {}
+    else:
+        props = {}
+    if "$ref" in schema:
+        ref = schema["$ref"]
+        key = ref.rsplit("/", 1)[-1]
+        comp = spec.get("components", {}).get("schemas", {}).get(key) or {}
+        props = comp.get("properties") or {}
+    assert "code" in props and "message" in props and "request_id" in props, (
+        f"response must expose canonical error fields (got {schema!r})"
+    )
+
+
 @pytest.mark.policy
-def test_waba_phone_numbers_list_documents_pagination(client):
+def test_auth_session_documents_errors(client):
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    op = spec.get("paths", {}).get("/v1/auth/session", {}).get("get") or {}
+    responses = op.get("responses") or {}
+    for code in ("401", "503"):
+        assert code in responses, f"GET /v1/auth/session must document HTTP {code}"
+        content = responses[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        _assert_error_envelope_fields(spec, schema)
+
+
+@pytest.mark.policy
+def test_me_api_keys_post_documents_errors(client):
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    op = spec.get("paths", {}).get("/v1/me/api-keys", {}).get("post") or {}
+    responses = op.get("responses") or {}
+    for code in (
+        "400",
+        "401",
+        "403",
+        "409",
+        "422",
+        "429",
+        "503",
+    ):
+        assert code in responses, f"POST /v1/me/api-keys must document HTTP {code}"
+        if code in ("400", "401", "403", "409", "429", "503"):
+            content = responses[code].get("content") or {}
+            schema = (content.get("application/json") or {}).get("schema") or {}
+            _assert_error_envelope_fields(spec, schema)
+
+
+@pytest.mark.policy
+def test_me_members_get_documents_errors(client):
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    op = spec.get("paths", {}).get("/v1/me/members", {}).get("get") or {}
+    responses = op.get("responses") or {}
+    for code in ("401", "403", "503"):
+        assert code in responses, f"GET /v1/me/members must document HTTP {code}"
+        content = responses[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        _assert_error_envelope_fields(spec, schema)
     r = client.get("/openapi.json")
     assert r.status_code == 200
     spec = r.json()

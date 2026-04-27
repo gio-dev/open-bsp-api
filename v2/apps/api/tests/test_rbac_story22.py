@@ -33,4 +33,3 @@ def test_viewer_cannot_list_members(client: TestClient) -> None:
     )
     assert r.status_code == 403
     assert r.json().get("code") == "http_403"
-

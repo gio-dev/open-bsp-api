@@ -14,15 +14,20 @@ COPY pyproject.toml README.md ./
 COPY alembic.ini ./
 COPY alembic ./alembic
 COPY app ./app
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir .
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
 # --- CI: lint + test (sempre via Docker) ---
 FROM base AS ci
 COPY tests ./tests
 RUN pip install --no-cache-dir ".[dev]"
-CMD ["sh", "-c", "ruff check . && ruff format --check . && alembic upgrade head && python -m app.ci_seed && pytest -q -m \"not atdd or epic1_atdd\""]
+# Migrations: docker-entrypoint.sh runs alembic upgrade head when ALEMBIC_SYNC_URL is set
+CMD ["sh", "-c", "ruff check . && ruff format --check . && python -m app.ci_seed && pytest -q -m \"not atdd or epic1_atdd or epic2_atdd or epic3_atdd\""]
 
 # --- Dev: mesmo runtime + ferramentas de dev (volume monta o codigo) ---
 FROM base AS dev

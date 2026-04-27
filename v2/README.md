@@ -48,7 +48,7 @@ O job `api-ci` sobe o servico **`postgres`** (Compose **profile `ci`**) e define
 - **`DATABASE_URL`**: `postgresql+asyncpg://app_runtime:...@postgres:5432/openbsp_test` (API em runtime com RLS).
 - **`ALEMBIC_SYNC_URL`**: `postgresql://postgres:postgres@postgres:5432/openbsp_test` (Alembic e *seed* usam este DSN *sync*; no `env.py` converte-se para `postgresql+psycopg` para o SQLAlchemy do Alembic).
 
-Migracoes: dentro da imagem/API, `alembic upgrade head` corre antes dos testes. Integracao RLS: `pytest -m integration` quando `DATABASE_URL` e `ALEMBIC_SYNC_URL` estao definidos (como no `api-ci`).
+Migracoes: ao **arrancar** a imagem da API, se `ALEMBIC_SYNC_URL` estiver definido, corre `alembic upgrade head` antes de `uvicorn` (ou antes da cadeia Ruff/seed/pytest no `api-ci`). **CI** (`api-ci`) define esse URL; em stack local, define-o no servico `api` quando tiveres Postgres acessivel (ver `ALEMBIC_SYNC_URL` no `api-ci` como referencia). Sem `ALEMBIC_SYNC_URL` o entrypoint nao executa migracoes.
 
 ### Resolucao de tenant (dev / ATDD, ate Epic 2)
 

@@ -9,6 +9,8 @@ import pytest
 from app.core.config import get_settings
 from fastapi.testclient import TestClient
 
+pytestmark = [pytest.mark.atdd, pytest.mark.epic3_atdd]
+
 
 def _sign(body: bytes, secret: str) -> str:
     return (

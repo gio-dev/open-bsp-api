@@ -11,9 +11,11 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.routes.auth_oidc import router as auth_oidc_router
 from app.api.routes.health import router as health_router
+from app.api.routes.me_api_keys import router as me_api_keys_router
 from app.api.routes.me_members import router as me_members_router
 from app.api.routes.me_organization import router as me_org_router
 from app.api.routes.me_waba import router as me_waba_router
+from app.api.routes.me_webhook_secrets import router as me_webhook_secrets_router
 from app.api.routes.webhooks_whatsapp import router as wa_webhook_router
 from app.core.config import get_settings
 from app.core.errors import (
@@ -44,6 +46,14 @@ def create_app() -> FastAPI:
                 "description": (
                     "Membros do tenant (Story 2.2). "
                     "Papeis: org_admin, operator, agent, viewer, finance, support."
+                ),
+            },
+            {
+                "name": "webhook-secrets",
+                "description": (
+                    "Segredo GET hub.verify_token (Meta) por tenant (Story 2.4). "
+                    "Rotacao com janela de coexistencia. "
+                    "URL: query tenant_id (UUID) para modo tenant."
                 ),
             },
         ],
@@ -116,6 +126,8 @@ def create_app() -> FastAPI:
     application.include_router(auth_oidc_router, prefix="/v1")
     application.include_router(me_org_router, prefix="/v1")
     application.include_router(me_members_router, prefix="/v1")
+    application.include_router(me_api_keys_router, prefix="/v1")
+    application.include_router(me_webhook_secrets_router, prefix="/v1")
     application.include_router(me_waba_router, prefix="/v1")
     application.include_router(wa_webhook_router, prefix="/v1")
     return application

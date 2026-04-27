@@ -12,6 +12,9 @@ const WabaPhoneNumberListPage = lazy(
   () => import("./features/waba/WabaPhoneNumberListPage"),
 );
 const MembersPage = lazy(() => import("./features/team/MembersPage"));
+const IntegrationsPage = lazy(
+  () => import("./features/integrations/IntegrationsPage"),
+);
 
 async function logoutSession(): Promise<void> {
   const base = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -40,6 +43,8 @@ export default function App() {
           {" · "}
           <Link to="/channels/waba-numbers">WhatsApp numbers</Link>
           {" · "}
+          <Link to="/settings/integrations">Integrations</Link>
+          {" · "}
           <Link to="/login">Login</Link>
           {sessionUi ? (
             <>
@@ -64,6 +69,10 @@ export default function App() {
                 element={<OrganizationSettingsPage />}
               />
               <Route path="/settings/team" element={<MembersPage />} />
+              <Route
+                path="/settings/integrations"
+                element={<IntegrationsPage />}
+              />
               <Route
                 path="/channels/waba-numbers"
                 element={<WabaPhoneNumberListPage />}

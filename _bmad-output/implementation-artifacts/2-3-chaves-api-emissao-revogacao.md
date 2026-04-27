@@ -1,7 +1,7 @@
 ---
 story_key: 2-3-chaves-api-emissao-revogacao
 epic: epic-2
-status: ready-for-dev
+status: done
 vs_validated: true
 vs_date: 2026-04-23
 atdd_ready: true
@@ -30,11 +30,21 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ## Tasks / Subtasks
 
-- [ ] Tabela `api_keys` (tenant_id, prefix, hash, status, expires_at, revoked_at) ou equivalente.
-- [ ] POST criar (201 + secret once), GET listar (sem secret), POST/PATCH revogar com janela.
-- [ ] Hashing seguro do secret; nunca logar valor completo.
-- [ ] OpenAPI + testes integracao; ATDD `test_epic2_story23_chaves_api_atdd.py`.
-- [ ] UI Integracoes: listagem honesta (UX-DR4).
+- [x] Tabela `api_keys` (tenant_id, prefix, hash, status, expira) + migracao 006; RLS.
+- [x] POST criar (201 + `secret` once), GET listar (sem secret), PATCH revogar com janela.
+- [x] Hashing PBKDF2 (segredo nao em logs de auditoria completo).
+- [x] OpenAPI + testes; ATDD `test_epic2_story23_chaves_api_atdd.py`, integracao, RBAC, crypto unit.
+- [x] UI Integrations: listagem + secret one-shot.
+
+### Review Findings
+
+- [x] [Review][Patch] **Documentacao story** alinhada ao codigo (tasks, File List, Dev Agent, frontmatter).
+- [x] [Review][Patch] **Prefixo na UI:** removido `?` extra; mostra `{row.key_prefix}`.
+- [x] [Review][Patch] **Copy one-shot:** "Copy this secret now. It will not be shown again."
+- [x] [Review][Patch] **Revogacao imediata na consola:** botao "Revoke now" com `PATCH` e `revoke_immediately: true`.
+- [x] [Review][Patch] **`IntegrityError`** em `POST` (colisao `uq_api_keys_tenant_prefix`) mapeado para **409** com mensagem clara; UI trata 409 no create.
+- [x] [Review][Defer] Rate-limit / middleware API key ? follow-up.
+- [x] [Review][Dismiss] ATDD/RBAC alinhados aos FR.
 
 ## Party Mode (CS) - perspetivas
 
@@ -91,11 +101,29 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ### Agent Model Used
 
-_(preencher na implementacao)_
+Composer (fecho Story 2.3 apos code review)
 
 ### Completion Notes List
 
+- `ApiKey` + RLS, `me_api_keys` (GET/POST/PATCH), PBKDF2, coexistencia, Integrations UI.
+- 2026-04-24: patches do code review (409 colisao prefixo, UI revoke now, copy, OpenAPI 409 em `_RESPONSES`).
+
 ### File List
+
+- `v2/apps/api/alembic/versions/006_api_keys_rls.py`
+- `v2/apps/api/app/core/api_key_crypto.py`
+- `v2/apps/api/app/api/routes/me_api_keys.py`
+- `v2/apps/api/app/db/models.py` (ApiKey)
+- `v2/apps/api/app/tenancy/rbac.py` (API_KEY_MANAGE_ROLES)
+- `v2/apps/api/app/tenancy/deps.py` (`console_api_key_manager_context`)
+- `v2/apps/api/app/main.py`
+- `v2/apps/api/tests/atdd/test_epic2_story23_chaves_api_atdd.py`
+- `v2/apps/api/tests/test_rbac_story23_api_keys.py`
+- `v2/apps/api/tests/test_api_key_crypto.py`
+- `v2/apps/api/tests/integration/test_story23_api_keys.py`
+- `v2/apps/admin-web/src/features/integrations/IntegrationsPage.tsx`
+- `v2/apps/admin-web/src/App.tsx` (rota)
+- `v2/apps/admin-web/src/atdd/epic2-integrations-page.atdd.test.tsx`
 
 ---
 
@@ -104,3 +132,5 @@ _(preencher na implementacao)_
 - 2026-04-23: **[CS]** story individual; Party Mode + Advanced Elicitation.
 - 2026-04-23: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-23: **[AT]** `test_epic2_story23_chaves_api_atdd.py`.
+- 2026-04-24: **[CR]** code review; `### Review Findings`; `status` in-progress.
+- 2026-04-24: **[CR]** correcao de todos os patches; story `done`.

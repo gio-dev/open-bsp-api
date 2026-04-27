@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import secrets
+import time
 from typing import Any
 from urllib.parse import urlencode
 
@@ -12,13 +13,12 @@ import httpx
 import jwt
 from jwt import PyJWKClient
 
-_metadata_cache: dict[str, dict[str, Any]] = {}
+_METADATA_TTL_S = 3600.0
+_metadata_cache: dict[str, tuple[dict[str, Any], float]] = {}
 
 
 def pkce_pair() -> tuple[str, str]:
-    verifier = (
-        base64.urlsafe_b64encode(secrets.token_bytes(32)).decode().rstrip("=")
-    )
+    verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode().rstrip("=")
     digest = hashlib.sha256(verifier.encode()).digest()
     challenge = base64.urlsafe_b64encode(digest).decode().rstrip("=")
     return verifier, challenge
@@ -26,14 +26,17 @@ def pkce_pair() -> tuple[str, str]:
 
 async def fetch_oidc_metadata(issuer: str) -> dict[str, Any]:
     key = issuer.rstrip("/")
+    now = time.monotonic()
     if key in _metadata_cache:
-        return _metadata_cache[key]
+        data, expires = _metadata_cache[key]
+        if now < expires:
+            return data
     url = f"{key}/.well-known/openid-configuration"
     async with httpx.AsyncClient(timeout=20.0) as client:
         r = await client.get(url)
         r.raise_for_status()
         data = r.json()
-    _metadata_cache[key] = data
+    _metadata_cache[key] = (data, now + _METADATA_TTL_S)
     return data
 
 

@@ -14,6 +14,7 @@ from fastapi import Depends, Header, HTTPException, Request
 from app.auth.session_cookie import decode_payload
 from app.core.config import get_settings
 from app.tenancy.rbac import (
+    API_KEY_MANAGE_ROLES,
     ORG_WRITE_ROLES,
     VALID_TENANT_ROLES,
     WABA_WRITE_ROLES,
@@ -43,8 +44,8 @@ def _parse_dev_tenant_user(
     x_dev_user_id: str | None,
 ) -> TenantUserContext:
     roles_raw = _parse_role_list(x_dev_roles)
-    # Stub: qualquer papel nao vazio; producao usa cookie (papeis validados no IdP/DB).
-    roles = frozenset(roles_raw)
+    # Mesmo filtro que o cookie: so papeis conhecidos (alinhado a producao).
+    roles = frozenset(r for r in roles_raw if r in VALID_TENANT_ROLES)
     if not roles:
         raise HTTPException(status_code=403, detail="tenant role required")
     actor: UUID | None = None
@@ -114,6 +115,17 @@ async def console_waba_write_context(
 ) -> TenantUserContext:
     if not (ctx.roles & WABA_WRITE_ROLES):
         raise HTTPException(status_code=403, detail="org_admin role required")
+    return ctx
+
+
+async def console_api_key_manager_context(
+    ctx: Annotated[TenantUserContext, Depends(console_tenant_user_context)],
+) -> TenantUserContext:
+    if not (ctx.roles & API_KEY_MANAGE_ROLES):
+        raise HTTPException(
+            status_code=403,
+            detail="org_admin or operator role required for api keys",
+        )
     return ctx
 
 

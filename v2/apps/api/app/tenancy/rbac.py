@@ -15,3 +15,5 @@ VALID_TENANT_ROLES: frozenset[str] = frozenset(
 ORG_WRITE_ROLES: frozenset[str] = frozenset({"org_admin"})
 
 WABA_WRITE_ROLES: frozenset[str] = frozenset({"org_admin"})
+
+API_KEY_MANAGE_ROLES: frozenset[str] = frozenset({"org_admin", "operator"})
