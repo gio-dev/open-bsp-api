@@ -14,6 +14,8 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
+    environment:
+      OUTBOUND_SWEEP_INTERVAL_SECONDS: "15"
 
   admin-web:
     build:
@@ -57,6 +59,7 @@ services:
       ALEMBIC_SYNC_URL: postgresql://postgres:postgres@postgres:5432/openbsp_test
       AUTH_DEV_STUB: "true"
       RUN_CI_SEED: "1"
+      WHATSAPP_CLOUD_API_STUB: "true"
 
   admin-web-ci:
     profiles: [ci]

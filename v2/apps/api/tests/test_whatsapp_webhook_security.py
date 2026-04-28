@@ -3,10 +3,17 @@
 import hashlib
 import hmac
 import json
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from app.core.config import get_settings
 from app.main import app
+from app.whatsapp.webhook_ingress import (
+    ensure_fresh_event,
+    meta_unix_ts,
+    payload_has_queueable_items,
+)
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 
@@ -98,3 +105,55 @@ def test_post_requires_app_secret_when_not_dev_stub(
     get_settings.cache_clear()
     monkeypatch.setenv("AUTH_DEV_STUB", "true")
     get_settings.cache_clear()
+
+
+def test_meta_unix_ts() -> None:
+    assert meta_unix_ts("1234567890") == datetime(2009, 2, 13, 23, 31, 30, tzinfo=UTC)
+    assert meta_unix_ts(1234567890) == datetime(2009, 2, 13, 23, 31, 30, tzinfo=UTC)
+    assert meta_unix_ts(None) is None
+    assert meta_unix_ts("nope") is None
+
+
+def test_payload_has_queueable_items() -> None:
+    assert not payload_has_queueable_items({"entry": []})
+    pl = {
+        "entry": [
+            {
+                "id": "waba1",
+                "changes": [
+                    {
+                        "value": {
+                            "messages": [{"id": " mid ", "timestamp": "1"}],
+                        }
+                    }
+                ],
+            }
+        ]
+    }
+    assert payload_has_queueable_items(pl)
+    assert not payload_has_queueable_items(
+        {"entry": [{"id": "waba1", "changes": [{"value": {}}]}]}
+    )
+
+
+def test_ensure_fresh_event_rejects_stale() -> None:
+    old = datetime.now(UTC) - timedelta(hours=1)
+    with pytest.raises(HTTPException) as ei:
+        ensure_fresh_event(
+            old,
+            max_age_seconds=60,
+            request_id="rid",
+            waba_id="w1",
+            source_id="s1",
+        )
+    assert ei.value.status_code == 409
+
+
+def test_ensure_fresh_event_skips_when_no_ts() -> None:
+    ensure_fresh_event(
+        None,
+        max_age_seconds=60,
+        request_id="rid",
+        waba_id="w1",
+        source_id="s1",
+    )

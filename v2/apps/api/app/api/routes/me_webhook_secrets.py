@@ -47,9 +47,10 @@ def _now_utc() -> datetime:
 
 
 def _throttle_webhook_rotate(tenant_id: UUID) -> None:
-    if get_settings().auth_dev_stub or os.environ.get(
-        "OPENBSP_SKIP_WEBHOOK_ROTATE_THROTTLE"
-    ) == "1":
+    if (
+        get_settings().auth_dev_stub
+        or os.environ.get("OPENBSP_SKIP_WEBHOOK_ROTATE_THROTTLE") == "1"
+    ):
         return
     with _rotate_lock:
         t = time.time()

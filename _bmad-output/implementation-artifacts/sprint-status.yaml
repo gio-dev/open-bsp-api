@@ -35,7 +35,7 @@
 #   already exists (never downgrade done to backlog)
 
 generated: "2026-04-22T17:15:00Z"
-last_updated: "2026-04-27T20:55:00Z"
+last_updated: "2026-04-28T22:05:00Z"
 project: open-bsp-api
 project_key: NOKEY
 tracking_system: file-system
@@ -57,15 +57,15 @@ development_status:
   epic-2-retrospective: optional
 
   epic-3: in-progress
-  3-1-webhook-entrada-verificacao-encaminhamento: in-progress
-  3-2-enviar-mensagem-saida-fila-retry: ready-for-dev
-  3-3-templates-sinais-opt-in-qualidade: ready-for-dev
+  3-1-webhook-entrada-verificacao-encaminhamento: review
+  3-2-enviar-mensagem-saida-fila-retry: done
+  3-3-templates-sinais-opt-in-qualidade: done
   epic-3-retrospective: optional
 
   epic-4: in-progress
-  4-1-inbox-split-lista-thread: ready-for-dev
-  4-2-etiquetas-triagem-partilhada: ready-for-dev
-  4-3-handoff-contexto-minimo: ready-for-dev
+  4-1-inbox-split-lista-thread: done
+  4-2-etiquetas-triagem-partilhada: review
+  4-3-handoff-contexto-minimo: review
   4-4-sinais-atraso-falha-health: ready-for-dev
   epic-4-retrospective: optional
 

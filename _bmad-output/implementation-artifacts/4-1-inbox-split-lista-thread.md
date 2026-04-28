@@ -1,7 +1,7 @@
 ---
 story_key: 4-1-inbox-split-lista-thread
 epic: epic-4
-status: ready-for-dev
+status: done
 vs_validated: true
 vs_date: 2026-04-23
 atdd_ready: true
@@ -30,10 +30,10 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ## Tasks / Subtasks
 
-- [ ] `GET /v1/me/conversations` (lista) + `GET /v1/me/conversations/{id}/messages` (thread) ou paths CDA equivalentes.
-- [ ] Cabecalho: tenant, WABA, numero no payload ou headers de contexto documentados.
-- [ ] Admin-web: layout split lista|thread; TanStack Query; skeleton; mobile navegacao.
-- [ ] OpenAPI; testes integracao; ATDD `test_epic4_story41_inbox_split_atdd.py`.
+- [x] `GET /v1/me/conversations` (lista) + `GET /v1/me/conversations/{id}/messages` (thread) ou paths CDA equivalentes.
+- [x] Cabecalho: tenant, WABA, numero no payload ou headers de contexto documentados.
+- [x] Admin-web: layout split lista|thread; TanStack Query; skeleton; mobile navegacao.
+- [x] OpenAPI; testes integracao; ATDD `test_epic4_story41_inbox_split_atdd.py`.
 
 ## Party Mode (CS) - perspetivas
 
@@ -77,12 +77,15 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 - Depende de **3.1** (e mensagens de entrada) para dados minimos de inbox.
 - Ver `architecture.md` e UX specs para split responsivo.
+- Thread atual: mensagens **inbound** a partir de `WebhookInboundEvent`; outbound humano pode ser story/epic futura.
 
 ## Testing Requirements
 
-- ATDD: `v2/apps/api/tests/atdd/test_epic4_story41_inbox_split_atdd.py`
+- ATDD API: `v2/apps/api/tests/atdd/test_epic4_story41_inbox_split_atdd.py`
+- Integracao: `v2/apps/api/tests/integration/test_story41_inbox.py`
+- OpenAPI: `v2/apps/api/tests/policy/test_openapi_gate.py` (`test_me_conversations_get_documents_errors`)
 - `_bmad-output/test-artifacts/V2/atdd-checklist-epic-4.md`
-- Opcional: Vitest ATDD inbox page (separado).
+- Vitest: `v2/apps/admin-web/src/atdd/epic4-story41-inbox-page.atdd.test.tsx`
 
 ## References
 
@@ -92,11 +95,26 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ### Agent Model Used
 
-_(preencher na implementacao)_
+Composer (DS + revisao 2026-04-28)
 
 ### Completion Notes List
 
+- Lista com `cursor` + `limit`; 409 quando varias linhas WABA sem `phone_number_id`.
+- UI: `keepPreviousData`, loading com testids `inbox-list-skeleton` / `inbox-thread-skeleton`; mobile `list` | `thread` abaixo de `md`.
+- Party Mode CR: artefacto e sprint alinhados; story marcada **done** apos verificacao verde em CI.
+
 ### File List
+
+- `v2/apps/api/alembic/versions/015_inbox_conversations.py`
+- `v2/apps/api/app/db/models_inbox.py`
+- `v2/apps/api/app/api/routes/me_conversations.py`
+- `v2/apps/api/app/main.py`
+- `v2/apps/api/app/ci_seed.py` (fixture `atdd-conv-1` / inbox)
+- `v2/apps/api/tests/integration/test_story41_inbox.py`
+- `v2/apps/api/tests/atdd/test_epic4_story41_inbox_split_atdd.py`
+- `v2/apps/api/tests/policy/test_openapi_gate.py`
+- `v2/apps/admin-web/src/features/inbox/InboxPage.tsx`
+- `v2/apps/admin-web/src/atdd/epic4-story41-inbox-page.atdd.test.tsx`
 
 ---
 
@@ -105,3 +123,5 @@ _(preencher na implementacao)_
 - 2026-04-23: **[CS]** story individual; Party Mode + Advanced Elicitation.
 - 2026-04-23: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-23: **[AT]** `test_epic4_story41_inbox_split_atdd.py`.
+- 2026-04-28: **[DS]** implementacao verificada (integracao + ATDD + OpenAPI + Vitest); Party Mode CR.
+- 2026-04-28: **[DS]** artefacto sincronizado; status **done**.

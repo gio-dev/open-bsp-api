@@ -1,6 +1,7 @@
 """FastAPI application entrypoint."""
 
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
@@ -12,7 +13,14 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.routes.auth_oidc import router as auth_oidc_router
 from app.api.routes.health import router as health_router
 from app.api.routes.me_api_keys import router as me_api_keys_router
+from app.api.routes.me_conversations import router as me_conversations_router
+from app.api.routes.me_inbox_handoff import router as me_inbox_handoff_router
+from app.api.routes.me_inbox_tags import router as me_inbox_tags_router
 from app.api.routes.me_members import router as me_members_router
+from app.api.routes.me_message_templates import (
+    router as me_message_templates_router,
+)
+from app.api.routes.me_messages import router as me_messages_router
 from app.api.routes.me_organization import router as me_org_router
 from app.api.routes.me_waba import router as me_waba_router
 from app.api.routes.me_webhook_secrets import router as me_webhook_secrets_router
@@ -24,13 +32,24 @@ from app.core.errors import (
     field_errors_from_request_validation,
 )
 from app.db.session import reset_engine
+from app.whatsapp.outbound_sweep import outbound_sweep_loop
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    yield
-    await reset_engine()
-    get_settings.cache_clear()
+    sweep_task: asyncio.Task[None] | None = None
+    settings = get_settings()
+    if settings.database_url and settings.outbound_sweep_interval_seconds > 0:
+        sweep_task = asyncio.create_task(outbound_sweep_loop())
+    try:
+        yield
+    finally:
+        if sweep_task is not None:
+            sweep_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await sweep_task
+        await reset_engine()
+        get_settings.cache_clear()
 
 
 def create_app() -> FastAPI:
@@ -54,6 +73,27 @@ def create_app() -> FastAPI:
                     "Segredo GET hub.verify_token (Meta) por tenant (Story 2.4). "
                     "Rotacao com janela de coexistencia. "
                     "URL: query tenant_id (UUID) para modo tenant."
+                ),
+            },
+            {
+                "name": "inbox",
+                "description": (
+                    "Inbox: conversas, mensagens (4.1), etiquetas (4.2), handoff (4.3)."
+                ),
+            },
+            {
+                "name": "messages",
+                "description": (
+                    "Envio WhatsApp (Story 3.2). Fila persistida; sweep periodico "
+                    "(quando OUTBOUND_SWEEP_INTERVAL_SECONDS > 0) reprocessa "
+                    "queued/rate_limited; POST tambem dispara entrega em background."
+                ),
+            },
+            {
+                "name": "message-templates",
+                "description": (
+                    "Templates WhatsApp e sinais de canal (Story 3.3). "
+                    "GET lista cache; ?refresh=true sincroniza via Graph (org_admin)."
                 ),
             },
         ],
@@ -125,10 +165,15 @@ def create_app() -> FastAPI:
     application.include_router(health_router, prefix="/v1")
     application.include_router(auth_oidc_router, prefix="/v1")
     application.include_router(me_org_router, prefix="/v1")
+    application.include_router(me_conversations_router, prefix="/v1")
+    application.include_router(me_inbox_tags_router, prefix="/v1")
+    application.include_router(me_inbox_handoff_router, prefix="/v1")
     application.include_router(me_members_router, prefix="/v1")
     application.include_router(me_api_keys_router, prefix="/v1")
     application.include_router(me_webhook_secrets_router, prefix="/v1")
     application.include_router(me_waba_router, prefix="/v1")
+    application.include_router(me_message_templates_router, prefix="/v1")
+    application.include_router(me_messages_router, prefix="/v1")
     application.include_router(wa_webhook_router, prefix="/v1")
     return application
 

@@ -1,7 +1,7 @@
 ---
 story_key: 4-3-handoff-contexto-minimo
 epic: epic-4
-status: ready-for-dev
+status: review
 vs_validated: true
 vs_date: 2026-04-23
 atdd_ready: true
@@ -30,11 +30,11 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ## Tasks / Subtasks
 
-- [ ] Modelo handoff (conversation_id, summary, bot_last_output, state, queue_id, ...).
-- [ ] Endpoints leitura + atualizacao de fila (papeis supervisao); audit minimo se sensivel.
-- [ ] Motor epico 5 emite eventos de handoff - contrato interno documentado.
-- [ ] Admin-web: painel contexto na thread; estados honestos.
-- [ ] Testes; ATDD `test_epic4_story43_handoff_atdd.py`.
+- [x] Modelo handoff (`inbox_conversation_handoffs`: resumo, ultima saida bot, estado, fila, claimed_by).
+- [x] `GET` + `PATCH` handoff; fila apenas `org_admin`; assumir (`accept`) com `INBOX_TAG_ROLES` + `X-Dev-User-Id`; 409 se ja aceite por outro operador.
+- [x] Contrato interno `app/inbox/handoff_sync.py` (`upsert_handoff_from_engine`) para Epic 5.5.
+- [x] Admin-web: painel handoff na thread; estado `failed` com copy honesta; fila editavel (API aplica RBAC).
+- [x] Testes integracao, ATDD API, OpenAPI gate, Vitest painel.
 
 ## Party Mode (CS) - perspetivas
 
@@ -81,6 +81,8 @@ code_location: v2/apps/api, v2/apps/admin-web
 ## Testing Requirements
 
 - ATDD: `v2/apps/api/tests/atdd/test_epic4_story43_handoff_atdd.py`
+- `_bmad-output/test-artifacts/V2/atdd-checklist-epic-4.md`
+- Vitest: `v2/apps/admin-web/src/atdd/epic4-story43-inbox-handoff.atdd.test.tsx`
 
 ## References
 
@@ -90,11 +92,28 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ### Agent Model Used
 
-_(preencher na implementacao)_
+Composer (DS Story 4.3)
 
 ### Completion Notes List
 
+- Estados: `automated`, `pending_handoff`, `queued`, `accepted`, `failed` (CHECK no Postgres).
+- `GET` sem linha devolve defaults (`automated`, campos vazios).
+- Supervisao = `org_admin` para `queue_id` (inclui `null` para limpar).
+
 ### File List
+
+- `v2/apps/api/alembic/versions/017_inbox_handoff.py`
+- `v2/apps/api/app/db/models_inbox.py`
+- `v2/apps/api/app/api/routes/me_inbox_handoff.py`
+- `v2/apps/api/app/inbox/handoff_sync.py`
+- `v2/apps/api/app/main.py`
+- `v2/apps/api/app/ci_seed.py`
+- `v2/apps/api/tests/integration/test_story43_handoff.py`
+- `v2/apps/api/tests/atdd/test_epic4_story43_handoff_atdd.py`
+- `v2/apps/api/tests/policy/test_openapi_gate.py`
+- `v2/apps/admin-web/src/features/inbox/InboxPage.tsx`
+- `v2/apps/admin-web/src/atdd/epic4-story42-inbox-tags.atdd.test.tsx`
+- `v2/apps/admin-web/src/atdd/epic4-story43-inbox-handoff.atdd.test.tsx`
 
 ---
 
@@ -103,3 +122,4 @@ _(preencher na implementacao)_
 - 2026-04-23: **[CS]** story individual; Party Mode + Advanced Elicitation.
 - 2026-04-23: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-23: **[AT]** `test_epic4_story43_handoff_atdd.py`.
+- 2026-04-28: **[DS]** implementacao; status `review`.

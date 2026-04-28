@@ -26,5 +26,13 @@
 ## Sessão longa / revogação de papéis na BD
 - A sessão consola ainda reflete o cookie até `exp` (~7d); revalidar contra a BD a cada request seria o endurecimento completo (história futura).
 
+## Deferred from: code review of 3-3-templates-sinais-opt-in-qualidade.md (2026-04-28)
+
+- **Paging message_templates Graph API:** piloto so primeira pagina; historia futura ou nota operacional.
+
 ## Rate-limits in-memory (várias instâncias)
 - Throttles de emissão de chave e rotação de webhook são por processo; escala horizontal exigiria loja partilhada (Redis) se NFR o exigir.
+
+## Deferred from: code review of 3-1-webhook-entrada-verificacao-encaminhamento.md (2026-04-28)
+
+- **Ruff/format em `me_api_keys.py` / `me_webhook_secrets.py`:** alterações cosméticas no mesmo PR que 3.1; avaliar reverter ou PR dedicado para historial mais limpo.

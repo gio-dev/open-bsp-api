@@ -1,10 +1,18 @@
 """ATDD Story 3.2 - Envio mensagem saida, fila, retry (RED until DS)."""
 
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 
+pytestmark = [pytest.mark.atdd, pytest.mark.epic3_atdd]
+
 
 @pytest.mark.atdd
+@pytest.mark.skipif(
+    not os.getenv("DATABASE_URL"),
+    reason="envio persiste estado em Postgres (CI api-ci)",
+)
 def test_story_32_post_send_message_returns_accepted_state(client: TestClient):
     """3.2: send creates persisted accepted/pending state."""
     r = client.post(
@@ -17,7 +25,9 @@ def test_story_32_post_send_message_returns_accepted_state(client: TestClient):
             "to": "+351910000099",
             "type": "text",
             "text": {"body": "atdd"},
+            "environment": "sandbox",
         },
     )
     assert r.status_code in (200, 201, 202), r.text
-    assert "status" in r.json() or "id" in r.json()
+    data = r.json()
+    assert "status" in data or "id" in data

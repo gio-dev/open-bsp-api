@@ -27,7 +27,7 @@ FROM base AS ci
 COPY tests ./tests
 RUN pip install --no-cache-dir ".[dev]"
 # Migrations: docker-entrypoint.sh runs alembic upgrade head when ALEMBIC_SYNC_URL is set
-CMD ["sh", "-c", "ruff check . && ruff format --check . && python -m app.ci_seed && pytest -q -m \"not atdd or epic1_atdd or epic2_atdd or epic3_atdd\""]
+CMD ["sh", "-c", "ruff check . && ruff format --check . && python -m app.ci_seed && pytest -q -m \"not atdd or epic1_atdd or epic2_atdd or epic3_atdd or epic4_atdd\""]
 
 # --- Dev: mesmo runtime + ferramentas de dev (volume monta o codigo) ---
 FROM base AS dev

@@ -42,9 +42,10 @@ _MIN_S_BETWEEN_API_KEY_CREATES = 2.0
 
 
 def _throttle_api_key_create(tenant_id: UUID) -> None:
-    if get_settings().auth_dev_stub or os.environ.get(
-        "OPENBSP_SKIP_API_KEY_CREATE_THROTTLE"
-    ) == "1":
+    if (
+        get_settings().auth_dev_stub
+        or os.environ.get("OPENBSP_SKIP_API_KEY_CREATE_THROTTLE") == "1"
+    ):
         return
     with _api_key_create_lock:
         t = time.time()

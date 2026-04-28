@@ -15,6 +15,8 @@ from app.auth.session_cookie import decode_payload
 from app.core.config import get_settings
 from app.tenancy.rbac import (
     API_KEY_MANAGE_ROLES,
+    INBOX_TAG_ROLES,
+    MESSAGE_SEND_ROLES,
     ORG_WRITE_ROLES,
     VALID_TENANT_ROLES,
     WABA_WRITE_ROLES,
@@ -118,6 +120,14 @@ async def console_waba_write_context(
     return ctx
 
 
+async def console_inbox_tag_context(
+    ctx: Annotated[TenantUserContext, Depends(console_tenant_user_context)],
+) -> TenantUserContext:
+    if not (ctx.roles & INBOX_TAG_ROLES):
+        raise HTTPException(status_code=403, detail="inbox tagging role required")
+    return ctx
+
+
 async def console_api_key_manager_context(
     ctx: Annotated[TenantUserContext, Depends(console_tenant_user_context)],
 ) -> TenantUserContext:
@@ -125,6 +135,17 @@ async def console_api_key_manager_context(
         raise HTTPException(
             status_code=403,
             detail="org_admin or operator role required for api keys",
+        )
+    return ctx
+
+
+async def console_message_send_context(
+    ctx: Annotated[TenantUserContext, Depends(console_tenant_user_context)],
+) -> TenantUserContext:
+    if not (ctx.roles & MESSAGE_SEND_ROLES):
+        raise HTTPException(
+            status_code=403,
+            detail="org_admin, operator, or agent role required to send messages",
         )
     return ctx
 

@@ -15,6 +15,10 @@ const MembersPage = lazy(() => import("./features/team/MembersPage"));
 const IntegrationsPage = lazy(
   () => import("./features/integrations/IntegrationsPage"),
 );
+const MessageTemplatesPage = lazy(
+  () => import("./features/templates/MessageTemplatesPage"),
+);
+const InboxPage = lazy(() => import("./features/inbox/InboxPage"));
 
 async function logoutSession(): Promise<void> {
   const base = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -42,6 +46,10 @@ export default function App() {
           <Link to="/settings/team">Team &amp; roles</Link>
           {" · "}
           <Link to="/channels/waba-numbers">WhatsApp numbers</Link>
+          {" · "}
+          <Link to="/channels/message-templates">Templates</Link>
+          {" · "}
+          <Link to="/inbox">Inbox</Link>
           {" · "}
           <Link to="/settings/integrations">Integrations</Link>
           {" · "}
@@ -73,6 +81,11 @@ export default function App() {
                 path="/settings/integrations"
                 element={<IntegrationsPage />}
               />
+              <Route
+                path="/channels/message-templates"
+                element={<MessageTemplatesPage />}
+              />
+              <Route path="/inbox" element={<InboxPage />} />
               <Route
                 path="/channels/waba-numbers"
                 element={<WabaPhoneNumberListPage />}

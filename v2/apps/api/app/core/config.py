@@ -50,6 +50,27 @@ class Settings(BaseSettings):
     whatsapp_webhook_max_body_bytes: int = 2 * 1024 * 1024
     """Max POST body size (bytes); DoS mitigation (WHATSAPP_WEBHOOK_MAX_BODY_BYTES)."""
 
+    whatsapp_webhook_max_event_age_seconds: int = 600
+    """Janela anti-replay: eventos Meta mais velhos sao rejeitados (409)."""
+
+    whatsapp_graph_base_url: str = "https://graph.facebook.com"
+    """Base URL Graph API (WHATSAPP_GRAPH_BASE_URL)."""
+
+    whatsapp_graph_api_version: str = "v21.0"
+    """Versao path Graph (WHATSAPP_GRAPH_API_VERSION)."""
+
+    whatsapp_cloud_access_token: str | None = None
+    """Token de sistema / numero para envio (WHATSAPP_CLOUD_ACCESS_TOKEN)."""
+
+    whatsapp_cloud_api_stub: bool = False
+    """True: envio sem HTTP real (WHATSAPP_CLOUD_API_STUB). CI/dev sem token."""
+
+    outbound_sweep_interval_seconds: int = 0
+    """Intervalo do sweep outbound (0 = desligado; ex.: 15 em producao)."""
+
+    outbound_sweep_batch_size: int = 50
+    """Max envios por passagem do sweep (OUTBOUND_SWEEP_BATCH_SIZE)."""
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -133,6 +133,160 @@ def test_me_api_keys_post_documents_errors(client):
 
 
 @pytest.mark.policy
+def test_webhooks_whatsapp_post_documents_errors(client):
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    op = spec.get("paths", {}).get("/v1/webhooks/whatsapp", {}).get("post") or {}
+    responses = op.get("responses") or {}
+    for code in (
+        "400",
+        "401",
+        "404",
+        "409",
+        "413",
+        "503",
+    ):
+        assert code in responses, (
+            f"POST /v1/webhooks/whatsapp must document HTTP {code}"
+        )
+        content = responses[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        _assert_error_envelope_fields(spec, schema)
+
+
+@pytest.mark.policy
+def test_me_messages_send_post_documents_errors(client):
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    op = spec.get("paths", {}).get("/v1/me/messages/send", {}).get("post") or {}
+    responses = op.get("responses") or {}
+    for code in ("401", "403", "404", "409", "422", "503"):
+        assert code in responses, f"POST /v1/me/messages/send must document HTTP {code}"
+        content = responses[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        _assert_error_envelope_fields(spec, schema)
+
+
+@pytest.mark.policy
+def test_me_message_templates_get_documents_errors(client):
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    op = spec.get("paths", {}).get("/v1/me/message-templates", {}).get("get") or {}
+    responses = op.get("responses") or {}
+    for code in ("401", "403", "409", "422", "503"):
+        assert code in responses, (
+            f"GET /v1/me/message-templates must document HTTP {code}"
+        )
+        content = responses[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        _assert_error_envelope_fields(spec, schema)
+
+
+@pytest.mark.policy
+def test_me_conversations_get_documents_errors(client):
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    op = spec.get("paths", {}).get("/v1/me/conversations", {}).get("get") or {}
+    responses = op.get("responses") or {}
+    for code in ("401", "403", "409", "422", "503"):
+        assert code in responses, f"GET /v1/me/conversations must document HTTP {code}"
+        content = responses[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        _assert_error_envelope_fields(spec, schema)
+    op2 = (
+        spec.get("paths", {})
+        .get("/v1/me/conversations/{conversation_id}/messages", {})
+        .get("get")
+        or {}
+    )
+    r2 = op2.get("responses") or {}
+    for code in ("401", "403", "404", "409", "422", "503"):
+        assert code in r2, (
+            "GET /v1/me/conversations/{conversation_id}/messages "
+            f"must document HTTP {code}"
+        )
+        content = r2[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        _assert_error_envelope_fields(spec, schema)
+
+
+@pytest.mark.policy
+def test_me_inbox_tags_documents_errors(client):
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    for path, method in (
+        ("/v1/me/inbox/tags", "get"),
+        ("/v1/me/inbox/tags", "post"),
+    ):
+        op = spec.get("paths", {}).get(path, {}).get(method) or {}
+        responses = op.get("responses") or {}
+        for code in ("401", "403", "422", "503"):
+            assert code in responses, (
+                f"{method.upper()} {path} must document HTTP {code}"
+            )
+            content = responses[code].get("content") or {}
+            schema = (content.get("application/json") or {}).get("schema") or {}
+            _assert_error_envelope_fields(spec, schema)
+    op3 = (
+        spec.get("paths", {})
+        .get("/v1/me/conversations/{conversation_id}/tags", {})
+        .get("patch")
+        or {}
+    )
+    r3 = op3.get("responses") or {}
+    for code in ("401", "403", "404", "422", "503"):
+        assert code in r3, (
+            "PATCH /v1/me/conversations/{conversation_id}/tags "
+            f"must document HTTP {code}"
+        )
+        content = r3[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        _assert_error_envelope_fields(spec, schema)
+
+
+@pytest.mark.policy
+def test_me_conversations_handoff_documents_errors(client):
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    opg = (
+        spec.get("paths", {})
+        .get("/v1/me/conversations/{conversation_id}/handoff", {})
+        .get("get")
+        or {}
+    )
+    rg = opg.get("responses") or {}
+    for code in ("401", "403", "404", "422", "503"):
+        assert code in rg, (
+            "GET /v1/me/conversations/{conversation_id}/handoff "
+            f"must document HTTP {code}"
+        )
+        content = rg[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        _assert_error_envelope_fields(spec, schema)
+    opp = (
+        spec.get("paths", {})
+        .get("/v1/me/conversations/{conversation_id}/handoff", {})
+        .get("patch")
+        or {}
+    )
+    rp = opp.get("responses") or {}
+    for code in ("401", "403", "404", "409", "422", "503"):
+        assert code in rp, (
+            "PATCH /v1/me/conversations/{conversation_id}/handoff "
+            f"must document HTTP {code}"
+        )
+        content = rp[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        _assert_error_envelope_fields(spec, schema)
+
+
+@pytest.mark.policy
 def test_me_members_get_documents_errors(client):
     r = client.get("/openapi.json")
     assert r.status_code == 200
