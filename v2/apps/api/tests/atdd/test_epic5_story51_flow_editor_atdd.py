@@ -10,6 +10,7 @@ _HDR = {
 
 
 @pytest.mark.atdd
+@pytest.mark.epic5_atdd
 def test_story_51_flow_validate_endpoint(client: TestClient):
     """5.1: validate rule flow draft (field/line errors)."""
     r = client.post(

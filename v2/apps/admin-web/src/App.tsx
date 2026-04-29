@@ -19,6 +19,7 @@ const MessageTemplatesPage = lazy(
   () => import("./features/templates/MessageTemplatesPage"),
 );
 const InboxPage = lazy(() => import("./features/inbox/InboxPage"));
+const FlowEditorPage = lazy(() => import("./features/flows/FlowEditorPage"));
 
 async function logoutSession(): Promise<void> {
   const base = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -50,6 +51,8 @@ export default function App() {
           <Link to="/channels/message-templates">Templates</Link>
           {" · "}
           <Link to="/inbox">Inbox</Link>
+          {" · "}
+          <Link to="/flows/editor">Flows</Link>
           {" · "}
           <Link to="/settings/integrations">Integrations</Link>
           {" · "}
@@ -86,6 +89,7 @@ export default function App() {
                 element={<MessageTemplatesPage />}
               />
               <Route path="/inbox" element={<InboxPage />} />
+              <Route path="/flows/editor" element={<FlowEditorPage />} />
               <Route
                 path="/channels/waba-numbers"
                 element={<WabaPhoneNumberListPage />}

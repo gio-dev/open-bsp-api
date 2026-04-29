@@ -1,7 +1,7 @@
 ---
 story_key: 5-2-sandbox-preview
 epic: epic-5
-status: ready-for-dev
+status: review
 vs_validated: true
 vs_date: 2026-04-23
 atdd_ready: true
@@ -30,10 +30,10 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ## Tasks / Subtasks
 
-- [ ] Runtime sandbox isolado (fila/worker ou modo sync dev-only documentado).
-- [ ] Fixture de mensagem; correlacao de run id para UI.
-- [ ] Admin-web: drawer preview; nao chamar endpoints de envio prod.
-- [ ] Testes; ATDD `test_epic5_story52_sandbox_atdd.py`.
+- [x] Runtime sandbox isolado (fila/worker ou modo sync dev-only documentado).
+- [x] Fixture de mensagem; correlacao de run id para UI.
+- [x] Admin-web: drawer preview; nao chamar endpoints de envio prod.
+- [x] Testes; ATDD `test_epic5_story52_sandbox_atdd.py`.
 
 ## Party Mode (CS) - perspetivas
 
@@ -64,7 +64,7 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ### Advanced Elicitation (VS)
 
-- **Pre-mortem:** timeout longo no sandbox - UX de cancelamento.
+- **Pre-mortem:** timeout longo no sandbox - UX de cancelacao.
 
 ### Checklist BMad (sintese)
 
@@ -89,11 +89,37 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ### Agent Model Used
 
-_(preencher na implementacao)_
+Composer (DS Story 5.2)
 
 ### Completion Notes List
 
+- `POST /v1/me/flows/{flow_id}/sandbox-run?environment=sandbox` (`console_flow_editor_context`): recusa `environment!=sandbox` com 422; grafico obrigatorio valido ( mesmo validador 5.1).
+- Sintese sync `simulate_sandbox_run` ? so logs locais (sem outbound/Meta).
+- Persistencia opcional quando `DATABASE_URL`: tabela `tenant_flow_sandbox_runs` (019) com `trace`, `correlation_id`, `fixture`; RLS tenant.
+- Chave literal `atdd-flow`: apenas com `AUTH_DEV_STUB` ou `ALLOW_ATDD_SANDBOX_FLOW_KEY` (Settings); caso contrario 422 em `flow_id`.
+- Resposta inclui `persisted` (gravacao opcional pode falhar sem bloquear trace) e `fixture_fingerprint` (SHA-256 16 hex do fixture); linha correspondente no trace.
+- Simulador: doc BFS/diamante; fixture completo no trace ate 8k chars.
+- Admin: `SandboxFlowDrawer` na inbox (visivel apenas com ambiente sandbox), Drawer Chakra lado lista; chama apenas sandbox-run (sem `/messages/send`).
+- Marker pytest `epic5_atdd` em `test_epic5_story52_sandbox_atdd.py`.
+
 ### File List
+
+- `v2/apps/api/alembic/versions/019_tenant_flow_sandbox_runs.py`
+- `v2/apps/api/app/db/models_flows.py`
+- `v2/apps/api/app/services/flow_sandbox.py`
+- `v2/apps/api/app/api/routes/me_flows.py`
+- `v2/apps/api/app/main.py`
+- `v2/apps/api/app/core/config.py`
+- `v2/apps/api/tests/test_flow_sandbox.py`
+- `v2/apps/api/tests/test_story52_sandbox_http.py`
+- `v2/apps/api/tests/integration/test_story52_sandbox_run.py`
+- `v2/apps/api/tests/policy/test_openapi_gate.py`
+- `v2/apps/api/tests/atdd/test_epic5_story52_sandbox_atdd.py`
+- `v2/apps/admin-web/src/features/inbox/SandboxFlowDrawer.tsx`
+- `v2/apps/admin-web/src/features/inbox/InboxPage.tsx`
+- `v2/apps/admin-web/src/atdd/epic5-story52-sandbox-drawer.atdd.test.tsx`
+- `_bmad-output/implementation-artifacts/5-2-sandbox-preview.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ---
 
@@ -102,3 +128,5 @@ _(preencher na implementacao)_
 - 2026-04-23: **[CS]** story individual; Party Mode + Advanced Elicitation.
 - 2026-04-23: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-23: **[AT]** `test_epic5_story52_sandbox_atdd.py`.
+- 2026-04-29: **[DS]** API sandbox-run sync, migracao 019, drawer inbox, testes ATDD/policy/unidade.
+- 2026-04-29: **[CR]** Party Mode: `atdd-flow` so com stub/`ALLOW_ATDD_SANDBOX_FLOW_KEY`; resposta `persisted` + `fixture_fingerprint` + trace; persist falha devolve trace (log); BFS/documentacao dedal; testes HTTP environment/401/403/OpenAPI 200; integracao gravacao DB; ATDD so 200; admin drawer UX+a11y+erros categorizados.

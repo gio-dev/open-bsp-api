@@ -15,6 +15,7 @@ from app.auth.session_cookie import decode_payload
 from app.core.config import get_settings
 from app.tenancy.rbac import (
     API_KEY_MANAGE_ROLES,
+    FLOW_EDITOR_ROLES,
     INBOX_TAG_ROLES,
     MESSAGE_SEND_ROLES,
     ORG_WRITE_ROLES,
@@ -135,6 +136,17 @@ async def console_api_key_manager_context(
         raise HTTPException(
             status_code=403,
             detail="org_admin or operator role required for api keys",
+        )
+    return ctx
+
+
+async def console_flow_editor_context(
+    ctx: Annotated[TenantUserContext, Depends(console_tenant_user_context)],
+) -> TenantUserContext:
+    if not (ctx.roles & FLOW_EDITOR_ROLES):
+        raise HTTPException(
+            status_code=403,
+            detail="org_admin or operator role required for flow drafts",
         )
     return ctx
 

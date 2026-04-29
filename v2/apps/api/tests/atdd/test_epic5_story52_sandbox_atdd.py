@@ -10,6 +10,7 @@ _HDR = {
 
 
 @pytest.mark.atdd
+@pytest.mark.epic5_atdd
 def test_story_52_sandbox_run_endpoint(client: TestClient):
     """5.2: run flow in sandbox; no production send."""
     r = client.post(
@@ -17,4 +18,4 @@ def test_story_52_sandbox_run_endpoint(client: TestClient):
         headers=_HDR,
         json={"fixture_message": {"type": "text", "body": "hi"}},
     )
-    assert r.status_code in (200, 202), r.text
+    assert r.status_code == 200, r.text

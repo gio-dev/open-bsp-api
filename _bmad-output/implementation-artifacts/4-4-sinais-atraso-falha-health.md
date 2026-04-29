@@ -1,7 +1,7 @@
 ---
 story_key: 4-4-sinais-atraso-falha-health
 epic: epic-4
-status: ready-for-dev
+status: done
 vs_validated: true
 vs_date: 2026-04-23
 atdd_ready: true
@@ -30,10 +30,10 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ## Tasks / Subtasks
 
-- [ ] Fonte de verdade: filas atrasadas, falhas Meta, erros plataforma - modelo minimo.
-- [ ] Endpoint tenant-scoped; sem vazar estado de outros tenants.
-- [ ] Admin-web: banner/badge na shell da inbox; copy honesta (UX-DR4).
-- [ ] Testes; ATDD `test_epic4_story44_channel_health_atdd.py`.
+- [x] Fonte de verdade: filas atrasadas, falhas Meta, erros plataforma - modelo minimo.
+- [x] Endpoint tenant-scoped; sem vazar estado de outros tenants.
+- [x] Admin-web: banner/badge na shell da inbox; copy honesta (UX-DR4).
+- [x] Testes; ATDD `test_epic4_story44_channel_health_atdd.py`.
 
 ## Party Mode (CS) - perspetivas
 
@@ -89,11 +89,30 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ### Agent Model Used
 
-_(preencher na implementacao)_
+Composer (DS Story 4.4)
 
 ### Completion Notes List
 
+- Agregacao `GET /v1/me/channel-health`: contagens outbound (failed meta vs plataforma, rate_limited, queued antigo >15 min) + handoffs `failed`; sinais com `source`, `severity`, `next_step`; `healthy` so true sem incidentes; RLS via `tenant_session`; `Cache-Control: private, max-age=15`.
+- Admin-web: query TanStack `staleTime` 15s; banner + badge apenas quando `healthy === false` e `incidents.length > 0` (nao bloqueia inbox se payload incompleto).
+- OpenAPI: gate `test_me_channel_health_get_documents_errors` (401/403/503).
+- Testes: `tests/test_channel_health_signals.py` (unidade `_build_signals`); `tests/integration/test_story44_channel_health.py`; ATDD admin `epic4-story44-channel-health.atdd.test.tsx`.
+- CI: `pytest -m 'not atdd'` + `pytest -m 'atdd and epic4_atdd'` verdes. Suite completa `pytest` inclui ATDD RED de epicos 5-10 (404 esperado ate DS).
+
 ### File List
+
+- `v2/apps/api/app/services/__init__.py`
+- `v2/apps/api/app/services/channel_health.py`
+- `v2/apps/api/app/api/routes/me_channel_health.py`
+- `v2/apps/api/app/main.py`
+- `v2/apps/api/tests/test_channel_health_signals.py`
+- `v2/apps/api/tests/integration/test_story44_channel_health.py`
+- `v2/apps/api/tests/atdd/test_epic4_story44_channel_health_atdd.py`
+- `v2/apps/api/tests/policy/test_openapi_gate.py`
+- `v2/apps/admin-web/src/features/inbox/InboxPage.tsx`
+- `v2/apps/admin-web/src/atdd/epic4-story44-channel-health.atdd.test.tsx`
+- `_bmad-output/implementation-artifacts/4-4-sinais-atraso-falha-health.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ---
 
@@ -102,3 +121,5 @@ _(preencher na implementacao)_
 - 2026-04-23: **[CS]** story individual; Party Mode + Advanced Elicitation.
 - 2026-04-23: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-23: **[AT]** `test_epic4_story44_channel_health_atdd.py`.
+- 2026-04-29: **[DS]** implementacao 4.4 API + admin-web + testes + sprint review.
+- 2026-04-29: **[DONE]** `status: done`; sprint `4-4-sinais-atraso-falha-health` fechada após CI (`api-ci`, `admin-web-ci`) e CR.

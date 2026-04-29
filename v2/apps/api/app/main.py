@@ -13,7 +13,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.routes.auth_oidc import router as auth_oidc_router
 from app.api.routes.health import router as health_router
 from app.api.routes.me_api_keys import router as me_api_keys_router
+from app.api.routes.me_channel_health import router as me_channel_health_router
 from app.api.routes.me_conversations import router as me_conversations_router
+from app.api.routes.me_flows import router as me_flows_router
 from app.api.routes.me_inbox_handoff import router as me_inbox_handoff_router
 from app.api.routes.me_inbox_tags import router as me_inbox_tags_router
 from app.api.routes.me_members import router as me_members_router
@@ -78,7 +80,8 @@ def create_app() -> FastAPI:
             {
                 "name": "inbox",
                 "description": (
-                    "Inbox: conversas, mensagens (4.1), etiquetas (4.2), handoff (4.3)."
+                    "Inbox: conversas, mensagens (4.1), etiquetas (4.2), "
+                    "handoff (4.3), saude do canal (4.4)."
                 ),
             },
             {
@@ -94,6 +97,15 @@ def create_app() -> FastAPI:
                 "description": (
                     "Templates WhatsApp e sinais de canal (Story 3.3). "
                     "GET lista cache; ?refresh=true sincroniza via Graph (org_admin)."
+                ),
+            },
+            {
+                "name": "flows",
+                "description": (
+                    "Fluxos: rascunhos e validacao (5.1); preview sandbox isolado - "
+                    "`POST .../sandbox-run?environment=sandbox` sem envio WhatsApp de "
+                    "producao nem rotas Meta de credencial prod (5.2). Chave "
+                    "`atdd-flow` apenas com AUTH_DEV_STUB ou ALLOW_ATDD_SANDBOX_FLOW_KEY."
                 ),
             },
         ],
@@ -168,6 +180,8 @@ def create_app() -> FastAPI:
     application.include_router(me_conversations_router, prefix="/v1")
     application.include_router(me_inbox_tags_router, prefix="/v1")
     application.include_router(me_inbox_handoff_router, prefix="/v1")
+    application.include_router(me_channel_health_router, prefix="/v1")
+    application.include_router(me_flows_router, prefix="/v1")
     application.include_router(me_members_router, prefix="/v1")
     application.include_router(me_api_keys_router, prefix="/v1")
     application.include_router(me_webhook_secrets_router, prefix="/v1")

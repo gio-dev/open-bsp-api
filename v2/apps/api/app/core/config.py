@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     auth_dev_stub: bool = False
     """True: resolve tenant from X-Dev-Tenant-Id (dev/CI; replace with real auth)."""
 
+    allow_atdd_sandbox_flow_key: bool = False
+    """True: permite `flow_id=atdd-flow` sem AUTH_DEV_STUB (ex. staging controlado)."""
+
     session_signing_secret: str | None = None
     """HMAC secret cookie consola (SESSION_SIGNING_SECRET). Obrigatorio sem stub."""
 

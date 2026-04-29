@@ -49,5 +49,6 @@ markers = [
     "epic2_atdd: Epic 2 ATDD subset (incremental CI gate)",
     "epic3_atdd: Epic 3 ATDD subset (incremental CI gate)",
     "epic4_atdd: Epic 4 ATDD subset (incremental CI gate)",
+    "epic5_atdd: Epic 5 ATDD subset (incremental CI gate)",
 ]
 asyncio_mode = "auto"

@@ -1,7 +1,7 @@
 ---
 story_key: 5-1-editor-fluxos-validacao
 epic: epic-5
-status: ready-for-dev
+status: done
 vs_validated: true
 vs_date: 2026-04-23
 atdd_ready: true
@@ -30,10 +30,10 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ## Tasks / Subtasks
 
-- [ ] Schema de fluxo + migracao; CRUD minimo de drafts.
-- [ ] Validador servidor-side com erros estruturados (path + mensagem).
-- [ ] Admin-web: editor UX-DR10; erros inline.
-- [ ] Testes; ATDD `test_epic5_story51_flow_editor_atdd.py`.
+- [x] Schema de fluxo + migracao; CRUD minimo de drafts.
+- [x] Validador servidor-side com erros estruturados (path + mensagem).
+- [x] Admin-web: editor UX-DR10; erros inline.
+- [x] Testes; ATDD `test_epic5_story51_flow_editor_atdd.py`.
 
 ## Party Mode (CS) - perspetivas
 
@@ -90,11 +90,39 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ### Agent Model Used
 
-_(preencher na implementacao)_
+Composer (DS Story 5.1)
 
 ### Completion Notes List
 
+- Tabela `tenant_flow_drafts` (018) + modelo `TenantFlowDraft` com JSONB `definition` `{"nodes":[],"edges":[]}`, RLS por `tenant_id`.
+- RBAC `FLOW_EDITOR_ROLES` (`org_admin`, `operator`); deps `console_flow_editor_context`.
+- Validador `app/services/flow_validation.py`: Pydantic + regras (1 trigger, DAG sem ciclos, nos alcancaveis, max 200 nos, pelo menos uma action alcancavel); `POST /v1/me/flows/validate` -> 200 `valid:true` ou 422 canonico `errors[]` com `field` path-style.
+- CRUD `GET/POST /v1/me/flows`, `GET/PATCH /v1/me/flows/{flow_id}` com `valid` calculado na resposta; create 201.
+- OpenAPI gate (policy) para validate + drafts paths.
+- Admin: `FlowEditorPage` (`/flows/editor`) ? JSON do grafo, Validar / Gravar; erros por campo via `parseCanonicalValidationBody`.
+- Correcao Pydantic v2: `ValidationError` import de `pydantic` (nao `pydantic.errors`).
+
 ### File List
+
+- `v2/apps/api/alembic/versions/018_tenant_flow_drafts.py`
+- `v2/apps/api/app/db/models_flows.py`
+- `v2/apps/api/app/services/flow_validation.py`
+- `v2/apps/api/app/api/routes/me_flows.py`
+- `v2/apps/api/app/main.py`
+- `v2/apps/api/app/tenancy/rbac.py`
+- `v2/apps/api/app/tenancy/deps.py`
+- `v2/apps/api/pyproject.toml`
+- `v2/apps/api/tests/test_flow_validation.py`
+- `v2/apps/api/tests/test_story51_flow_validate_http.py`
+- `v2/apps/api/tests/integration/test_story51_flows.py`
+- `v2/apps/api/tests/policy/test_openapi_gate.py`
+- `v2/apps/api/tests/atdd/test_epic5_story51_flow_editor_atdd.py`
+- `v2/apps/admin-web/src/features/flows/FlowEditorPage.tsx`
+- `v2/apps/admin-web/src/lib/canonicalApiError.ts`
+- `v2/apps/admin-web/src/App.tsx`
+- `v2/apps/admin-web/src/atdd/epic5-story51-flow-editor.atdd.test.tsx`
+- `_bmad-output/implementation-artifacts/5-1-editor-fluxos-validacao.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ---
 
@@ -103,3 +131,6 @@ _(preencher na implementacao)_
 - 2026-04-23: **[CS]** story individual; Party Mode + Advanced Elicitation.
 - 2026-04-23: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-23: **[AT]** `test_epic5_story51_flow_editor_atdd.py`.
+- 2026-04-29: **[DS]** migracao 018, API flows + validate, admin FlowEditorPage, testes (unidade, HTTP, policy, ATDD epic5, integracao CI).
+- 2026-04-29: **[CR]** Party Mode: validacao em POST/PATCH, 503 anonimo, nos `extra=forbid`, erros por `nodes.{id}`, OpenAPI examples, testes 401/403/integracao; UI banners + `aria-live` + tratamento canonico de erro.
+- 2026-04-29: **[DONE]** `status: done`; sprint `5-1-editor-fluxos-validacao` fechada.

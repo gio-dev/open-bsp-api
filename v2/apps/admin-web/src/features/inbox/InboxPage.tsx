@@ -16,6 +16,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { apiFetchInit } from "../../lib/consoleAuth";
+import SandboxFlowDrawer from "./SandboxFlowDrawer";
 
 const listEnvironment = (): string =>
   import.meta.env.VITE_WABA_ENV ?? "production";
@@ -174,6 +175,27 @@ type AllTagsResponse = {
   items: TagBrief[];
 };
 
+type ChannelHealthSignal = {
+  source: "meta" | "platform" | "unknown";
+  severity: "warning" | "critical";
+  code: string;
+  summary: string;
+  next_step: string;
+  count: number;
+};
+
+type ChannelHealthResponse = {
+  healthy: boolean;
+  incidents: ChannelHealthSignal[];
+  counts: {
+    outbound_failed_meta: number;
+    outbound_failed_platform: number;
+    outbound_rate_limited: number;
+    outbound_stale_queued: number;
+    handoff_failed: number;
+  };
+};
+
 export default function InboxPage() {
   const env = listEnvironment();
   const qc = useQueryClient();
@@ -218,6 +240,19 @@ export default function InboxPage() {
         throw new Error(await readErrorMessage(r));
       }
       return r.json() as Promise<AllTagsResponse>;
+    },
+  });
+
+  const channelHealthQuery = useQuery({
+    queryKey: ["inbox", "channel-health"],
+    staleTime: 15_000,
+    retry: 1,
+    queryFn: async (): Promise<ChannelHealthResponse> => {
+      const r = await fetch(apiPath("/v1/me/channel-health"), apiInit());
+      if (!r.ok) {
+        throw new Error(await readErrorMessage(r));
+      }
+      return r.json() as Promise<ChannelHealthResponse>;
     },
   });
 
@@ -440,6 +475,18 @@ export default function InboxPage() {
       (t) => !threadTags.some((c) => c.id === t.id),
     ) ?? [];
 
+  const channelHealthPayload = channelHealthQuery.data;
+  const channelHealthIncidents = channelHealthPayload?.incidents ?? [];
+  const showChannelHealthFetchError = channelHealthQuery.isError;
+  const showChannelHealthInconsistent =
+    channelHealthPayload != null &&
+    channelHealthPayload.healthy === false &&
+    channelHealthIncidents.length === 0;
+  const showChannelHealthBanner =
+    channelHealthPayload != null &&
+    channelHealthPayload.healthy === false &&
+    channelHealthIncidents.length > 0;
+
   return (
     <VStack data-testid="inbox-root" align="stretch" gap={3}>
       {header ? (
@@ -463,6 +510,95 @@ export default function InboxPage() {
           <Spinner size="sm" />
           <Text color="fg.muted">A carregar contexto...</Text>
         </HStack>
+      ) : null}
+
+      {showChannelHealthFetchError ? (
+        <Box
+          role="status"
+          data-testid="inbox-channel-health-fetch-error"
+          borderWidth="1px"
+          rounded="md"
+          p={3}
+          borderColor="border.muted"
+          bg="bg.muted"
+        >
+          <Text fontSize="sm" color="fg.muted">
+            Não foi possível carregar o estado do canal. A inbox continua
+            disponível; tente atualizar ou volte mais tarde.
+          </Text>
+        </Box>
+      ) : null}
+
+      {!showChannelHealthFetchError && showChannelHealthInconsistent ? (
+        <Box
+          role="alert"
+          data-testid="inbox-channel-health-inconsistent"
+          borderWidth="1px"
+          rounded="md"
+          p={3}
+          borderColor="orange.solid"
+        >
+          <Text fontSize="sm" fontWeight="medium">
+            Estado do canal indisponível ou inconsistente
+          </Text>
+          <Text fontSize="xs" color="fg.muted">
+            O serviço reportou problema sem detalhe de incidentes. Contacte
+            suporte com o request_id do pedido, se disponível.
+          </Text>
+        </Box>
+      ) : null}
+
+      {!showChannelHealthFetchError && showChannelHealthBanner ? (
+        <Box
+          role="alert"
+          data-testid="inbox-channel-health-banner"
+          borderWidth="1px"
+          rounded="md"
+          p={3}
+          borderColor={
+            channelHealthIncidents.some((i) => i.severity === "critical")
+              ? "red.solid"
+              : "orange.solid"
+          }
+        >
+          <HStack gap={2} mb={2} flexWrap="wrap">
+            <Text fontWeight="semibold">Estado do canal</Text>
+            <Badge
+              colorPalette={
+                channelHealthIncidents.some((i) => i.severity === "critical")
+                  ? "red"
+                  : "orange"
+              }
+              variant="surface"
+              data-testid="inbox-channel-health-badge"
+            >
+              {channelHealthIncidents.length}
+            </Badge>
+          </HStack>
+          <VStack align="stretch" gap={2}>
+            {channelHealthIncidents.map((inc) => (
+              <Box key={inc.code} data-testid={`inbox-channel-health-${inc.code}`}>
+                <Text fontSize="sm" fontWeight="medium">
+                  {inc.summary}{" "}
+                  <Text as="span" fontSize="xs" color="fg.muted">
+                    (
+                    {inc.source === "meta"
+                      ? "Meta"
+                      : inc.source === "platform"
+                        ? "Plataforma"
+                        : inc.source === "unknown"
+                          ? "Outro"
+                          : "-"}
+                    )
+                  </Text>
+                </Text>
+                <Text fontSize="xs" color="fg.muted">
+                  {inc.next_step}
+                </Text>
+              </Box>
+            ))}
+          </VStack>
+        </Box>
       ) : null}
 
       {phoneNumberId ? (
@@ -547,9 +683,12 @@ export default function InboxPage() {
           rounded="md"
           p={2}
         >
-          <Heading size="sm" mb={2}>
-            Conversations
-          </Heading>
+          <HStack mb={2} justify="space-between" align="center" flexWrap="wrap" gap={2}>
+            <Heading size="sm">Conversations</Heading>
+            <SandboxFlowDrawer
+              inboxEnvironment={header?.environment ?? env}
+            />
+          </HStack>
           {listQuery.isLoading && !listQuery.data ? (
             <HStack data-testid="inbox-list-skeleton">
               <Spinner size="sm" />

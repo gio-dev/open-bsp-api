@@ -72,7 +72,8 @@ def test_me_organization_documents_error_envelope(client):
         props422: dict = {}
         if "$ref" in schema422:
             key422 = schema422["$ref"].rsplit("/", 1)[-1]
-            ref422 = spec.get("components", {}).get("schemas", {}).get(key422) or {}
+            schemas = spec.get("components", {}).get("schemas", {})
+            ref422 = schemas.get(key422) or {}
             props422 = ref422.get("properties") or {}
         elif schema422.get("type") == "object":
             props422 = schema422.get("properties") or {}
@@ -287,6 +288,20 @@ def test_me_conversations_handoff_documents_errors(client):
 
 
 @pytest.mark.policy
+def test_me_channel_health_get_documents_errors(client):
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    op = spec.get("paths", {}).get("/v1/me/channel-health", {}).get("get") or {}
+    responses = op.get("responses") or {}
+    for code in ("401", "403", "503"):
+        assert code in responses, f"GET /v1/me/channel-health must document HTTP {code}"
+        content = responses[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        _assert_error_envelope_fields(spec, schema)
+
+
+@pytest.mark.policy
 def test_me_members_get_documents_errors(client):
     r = client.get("/openapi.json")
     assert r.status_code == 200
@@ -306,3 +321,123 @@ def test_me_members_get_documents_errors(client):
     assert "limit" in names
     assert "cursor" in names
     assert "environment" in names
+
+
+@pytest.mark.policy
+def test_me_flows_validate_post_documents_errors(client):
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    op = spec.get("paths", {}).get("/v1/me/flows/validate", {}).get("post") or {}
+    responses = op.get("responses") or {}
+    for code in ("401", "403", "422"):
+        assert code in responses, (
+            f"POST /v1/me/flows/validate must document HTTP {code}"
+        )
+        content = responses[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        if code == "422":
+            props422: dict = {}
+            if "$ref" in schema:
+                key422 = schema["$ref"].rsplit("/", 1)[-1]
+                schemas = spec.get("components", {}).get("schemas", {})
+                ref422 = schemas.get(key422) or {}
+                props422 = ref422.get("properties") or {}
+            elif schema.get("type") == "object":
+                props422 = schema.get("properties") or {}
+            for key in ("code", "message", "request_id", "errors"):
+                assert key in props422, f"422 must include {key}"
+        else:
+            _assert_error_envelope_fields(spec, schema)
+
+
+@pytest.mark.policy
+def test_me_flow_drafts_paths_documents_errors(client):
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+
+    opg = spec.get("paths", {}).get("/v1/me/flows", {}).get("get") or {}
+    rsg = opg.get("responses") or {}
+    for code in ("401", "403", "503"):
+        assert code in rsg, f"GET /v1/me/flows must document HTTP {code}"
+        content = rsg[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        _assert_error_envelope_fields(spec, schema)
+
+    opp = spec.get("paths", {}).get("/v1/me/flows", {}).get("post") or {}
+    rsp = opp.get("responses") or {}
+    for code in ("401", "403", "422", "503"):
+        assert code in rsp, f"POST /v1/me/flows must document HTTP {code}"
+        content = rsp[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        if code == "422":
+            props422: dict = {}
+            if "$ref" in schema:
+                key422 = schema["$ref"].rsplit("/", 1)[-1]
+                schemas = spec.get("components", {}).get("schemas", {})
+                ref422 = schemas.get(key422) or {}
+                props422 = ref422.get("properties") or {}
+            elif schema.get("type") == "object":
+                props422 = schema.get("properties") or {}
+            for key in ("code", "message", "request_id", "errors"):
+                assert key in props422, f"422 must include {key}"
+        else:
+            _assert_error_envelope_fields(spec, schema)
+
+    for path, method, codes in (
+        ("/v1/me/flows/{flow_id}", "get", ("401", "403", "404", "503")),
+        ("/v1/me/flows/{flow_id}", "patch", ("401", "403", "404", "422", "503")),
+    ):
+        opx = spec.get("paths", {}).get(path, {}).get(method) or {}
+        res = opx.get("responses") or {}
+        for code in codes:
+            assert code in res, f"{method.upper()} {path} must document HTTP {code}"
+            content = res[code].get("content") or {}
+            schema = (content.get("application/json") or {}).get("schema") or {}
+            if code == "422":
+                props422: dict = {}
+                if "$ref" in schema:
+                    key422 = schema["$ref"].rsplit("/", 1)[-1]
+                    schemas = spec.get("components", {}).get("schemas", {})
+                    ref422 = schemas.get(key422) or {}
+                    props422 = ref422.get("properties") or {}
+                elif schema.get("type") == "object":
+                    props422 = schema.get("properties") or {}
+                for key in ("code", "message", "request_id", "errors"):
+                    assert key in props422, f"422 must include {key}"
+            else:
+                _assert_error_envelope_fields(spec, schema)
+
+
+@pytest.mark.policy
+def test_me_flow_sandbox_run_post_documents_errors(client):
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    op = (
+        spec.get("paths", {})
+        .get("/v1/me/flows/{flow_id}/sandbox-run", {})
+        .get("post")
+        or {}
+    )
+    res = op.get("responses") or {}
+    for code in ("401", "403", "404", "422", "503"):
+        assert code in res, (
+            f"POST /v1/me/flows/{{flow_id}}/sandbox-run must document HTTP {code}"
+        )
+        content = res[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        if code == "422":
+            props422: dict = {}
+            if "$ref" in schema:
+                key422 = schema["$ref"].rsplit("/", 1)[-1]
+                schemas = spec.get("components", {}).get("schemas", {})
+                ref422 = schemas.get(key422) or {}
+                props422 = ref422.get("properties") or {}
+            elif schema.get("type") == "object":
+                props422 = schema.get("properties") or {}
+            for key in ("code", "message", "request_id", "errors"):
+                assert key in props422, f"422 must include {key}"
+        else:
+            _assert_error_envelope_fields(spec, schema)
