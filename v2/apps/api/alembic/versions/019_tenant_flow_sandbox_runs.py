@@ -31,9 +31,19 @@ def upgrade() -> None:
             nullable=False,
             server_default="sandbox",
         ),
-        sa.Column("fixture", JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+        sa.Column(
+            "fixture",
+            JSONB(),
+            nullable=False,
+            server_default=sa.text("'{}'::jsonb"),
+        ),
         sa.Column("status", sa.String(32), nullable=False),
-        sa.Column("trace", JSONB(), nullable=False, server_default=sa.text("'[]'::jsonb")),
+        sa.Column(
+            "trace",
+            JSONB(),
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
+        ),
         sa.Column("correlation_id", sa.String(128), nullable=True),
         sa.Column(
             "created_at",
@@ -57,8 +67,16 @@ def upgrade() -> None:
         "tenant_flow_sandbox_runs",
         ["tenant_id", "created_at"],
     )
-    op.execute(sa.text("ALTER TABLE tenant_flow_sandbox_runs ENABLE ROW LEVEL SECURITY"))
-    op.execute(sa.text("ALTER TABLE tenant_flow_sandbox_runs FORCE ROW LEVEL SECURITY"))
+    op.execute(
+        sa.text(
+            "ALTER TABLE tenant_flow_sandbox_runs ENABLE ROW LEVEL SECURITY",
+        ),
+    )
+    op.execute(
+        sa.text(
+            "ALTER TABLE tenant_flow_sandbox_runs FORCE ROW LEVEL SECURITY",
+        ),
+    )
     op.execute(
         sa.text(
             """
@@ -87,7 +105,11 @@ def downgrade() -> None:
     op.execute(
         sa.text("ALTER TABLE tenant_flow_sandbox_runs NO FORCE ROW LEVEL SECURITY")
     )
-    op.execute(sa.text("ALTER TABLE tenant_flow_sandbox_runs DISABLE ROW LEVEL SECURITY"))
+    op.execute(
+        sa.text(
+            "ALTER TABLE tenant_flow_sandbox_runs DISABLE ROW LEVEL SECURITY",
+        ),
+    )
     op.drop_index(
         "ix_tenant_flow_sandbox_runs_tenant_created",
         table_name="tenant_flow_sandbox_runs",

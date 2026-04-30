@@ -38,6 +38,11 @@ src = ["app", "tests"]
 [tool.ruff.lint]
 select = ["E", "F", "I"]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/test_story52_sandbox_http.py" = ["I001"]
+"tests/test_story53_publish_http.py" = ["I001"]
+"tests/test_story54_versions_http.py" = ["I001"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [

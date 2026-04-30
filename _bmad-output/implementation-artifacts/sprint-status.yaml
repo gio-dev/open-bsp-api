@@ -1,5 +1,5 @@
 # generated: 2026-04-22T17:15:00Z
-# last_updated: 2026-04-29T20:30:00Z
+# last_updated: 2026-04-30T17:35:00Z
 # project: open-bsp-api
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 #   already exists (never downgrade done to backlog)
 
 generated: "2026-04-22T17:15:00Z"
-last_updated: "2026-04-29T20:30:00Z"
+last_updated: "2026-04-30T17:35:00Z"
 project: open-bsp-api
 project_key: NOKEY
 tracking_system: file-system
@@ -71,9 +71,9 @@ development_status:
 
   epic-5: in-progress
   5-1-editor-fluxos-validacao: done
-  5-2-sandbox-preview: review
-  5-3-publish-permissao-ambiente: ready-for-dev
-  5-4-versao-audit-materialidade: ready-for-dev
+  5-2-sandbox-preview: done
+  5-3-publish-permissao-ambiente: done
+  5-4-versao-audit-materialidade: review
   5-5-engine-aplica-acoes: ready-for-dev
   epic-5-retrospective: optional
 

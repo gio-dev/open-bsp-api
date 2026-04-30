@@ -104,8 +104,13 @@ def create_app() -> FastAPI:
                 "description": (
                     "Fluxos: rascunhos e validacao (5.1); preview sandbox isolado - "
                     "`POST .../sandbox-run?environment=sandbox` sem envio WhatsApp de "
-                    "producao nem rotas Meta de credencial prod (5.2). Chave "
-                    "`atdd-flow` apenas com AUTH_DEV_STUB ou ALLOW_ATDD_SANDBOX_FLOW_KEY."
+                    "producao nem rotas Meta de credencial prod (5.2). "
+                    "`POST .../publish` activa snapshot por ambiente dev/staging/prod "
+                    "com RBAC (admin-only em prod) e audit (5.3). "
+                    "`GET .../versions` lista historico append-only por publicacao "
+                    "material com paginacao; detalhe com snapshot JSON (5.4). "
+                    "Chave `atdd-flow` apenas com AUTH_DEV_STUB ou "
+                    "ALLOW_ATDD_SANDBOX_FLOW_KEY."
                 ),
             },
         ],

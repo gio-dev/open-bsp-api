@@ -3,6 +3,9 @@
 O walk e BFS com cada no visitado no maximo uma vez: em grafos em diamante (dois
 caminhos para o mesmo no), apenas um ramo e percorrido; preview simplificado, nao
 equivale a semantica completa de um motor futuro com branching condicional real.
+
+Workers/filas futuros devem exigir explicitamente environment=sandbox antes de
+invocar este modulo ou qualquer envio, para evitar bypass acidental da politica HTTP.
 """
 
 from __future__ import annotations
@@ -17,6 +20,7 @@ def simulate_sandbox_run(
     fixture_message: dict[str, Any],
     *,
     correlation_id: str,
+    fixture_trace_preview_max: int = 512,
 ) -> tuple[Literal["succeeded", "failed"], list[str]]:
     """Simula navegacao a partir do trigger; nunca invoca redes externas."""
 
@@ -52,8 +56,13 @@ def simulate_sandbox_run(
         sort_keys=True,
         default=str,
     )
-    if len(fx_dump) > 8000:
-        fx_dump = fx_dump[:8000] + "...(truncado para log; fixture completo no payload/gravacao)"
+    cap = max(64, fixture_trace_preview_max)
+    if len(fx_dump) > cap:
+        fx_dump = (
+            fx_dump[:cap]
+            + f"...(truncado para log; {len(fx_dump)} chars; fixture completo no "
+            "payload da resposta e gravacao opcional)"
+        )
     trace.append(
         f"sandbox: fixture_message={fx_dump}",
     )
@@ -64,6 +73,11 @@ def simulate_sandbox_run(
             continue
         seen.add(cur)
         visited.append(cur)
+        if cur not in by_id:
+            trace.append(
+                f"sandbox: abort: no {cur!r} ausente na definicao (inconsistente)",
+            )
+            return "failed", trace
         kind = str(by_id[cur].get("kind", "?"))
         if kind == "trigger":
             trace.append(
@@ -75,8 +89,7 @@ def simulate_sandbox_run(
             )
         elif kind == "action":
             trace.append(
-                f"sandbox: node {cur} (action): local handle "
-                "(no outbound enqueue)",
+                f"sandbox: node {cur} (action): local handle (no outbound enqueue)",
             )
         else:
             trace.append(f"sandbox: node {cur} ({kind}): noop stub")

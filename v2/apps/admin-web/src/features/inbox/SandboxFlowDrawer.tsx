@@ -47,7 +47,7 @@ export default function SandboxFlowDrawer(props: {
     (path: string) => `${import.meta.env.VITE_API_BASE_URL ?? ""}${path}`,
     [],
   );
-  const [flowKey, setFlowKey] = useState("atdd-flow");
+  const [flowKey, setFlowKey] = useState("");
   const [fixtureJson, setFixtureJson] = useState(
     JSON.stringify({ type: "text", body: "hi" }, null, 2),
   );
@@ -56,21 +56,31 @@ export default function SandboxFlowDrawer(props: {
   const [result, setResult] = useState<SandboxRunOut | null>(null);
 
   const copyTrace = useCallback(() => {
-    if (!result?.trace?.length) return;
+    if (!result?.trace?.length) {
+      setBanner("[Copiar] Nada para copiar ? execute um preview com trace primeiro.");
+      return;
+    }
     void navigator.clipboard.writeText(result.trace.join("\n"));
-  }, [result]);
+    setBanner("[Copiar] Trace copiado para a area de transferencia.");
+ }, [result]);
 
   const onRun = useCallback(async () => {
     setBanner(null);
     setResult(null);
+    if (flowKey.trim() === "") {
+      setBanner(
+        "[Dados] Indique o UUID do rascunho (Fluxos 5.1) ou a chave dev atdd-flow.",
+      );
+      return;
+    }
     let fixture_message: Record<string, unknown>;
     try {
       fixture_message = JSON.parse(fixtureJson) as Record<string, unknown>;
     } catch (e) {
       const hint =
         e instanceof SyntaxError && e.message
-          ? `Fixture JSON invalido (${e.message})`
-          : "Fixture JSON invalido.";
+          ? `JSON mal formado ? verifique aspas e virgulas. (${e.message})`
+          : "JSON mal formado ? verifique aspas e virgulas.";
       setBanner(`[Dados] ${hint}`);
       return;
     }
@@ -131,7 +141,7 @@ export default function SandboxFlowDrawer(props: {
   }
 
   return (
-    <Drawer.Root>
+    <Drawer.Root placement="start">
       <Drawer.Trigger asChild>
         <Button
           size="xs"
@@ -156,15 +166,14 @@ export default function SandboxFlowDrawer(props: {
             <Drawer.Body>
               <VStack align="stretch" gap={4} data-testid="inbox-sandbox-drawer-panel">
                 <Text fontSize="sm" fontWeight="medium" color="fg.emphasized">
-                  Sem envio de producao ? motor com `environment=sandbox` obrigatorio na
-                  API.
+                  Sem envio de producao: o motor exige `environment=sandbox` na API.
                 </Text>
                 <Text fontSize="sm" color="fg.muted">
                   <strong>Flow id:</strong> UUID do rascunho gravado em Fluxos (5.1), ou
                   a chave dev <code>atdd-flow</code> em CI/stub.
                 </Text>
                 <Input
-                  aria-label="sandbox-flow-key"
+                  aria-label="Identificador do fluxo: UUID do rascunho ou atdd-flow (dev)"
                   value={flowKey}
                   placeholder="UUID do draft ou atdd-flow"
                   onChange={(e) => void setFlowKey(e.target.value)}
@@ -175,7 +184,7 @@ export default function SandboxFlowDrawer(props: {
                   envia; use Copiar trace para ver log completo.
                 </Text>
                 <Textarea
-                  aria-label="sandbox-fixture-json"
+                  aria-label="JSON da mensagem e contacto de teste (fixture)"
                   fontFamily="mono"
                   minH="100px"
                   value={fixtureJson}
@@ -230,7 +239,13 @@ export default function SandboxFlowDrawer(props: {
                         ))
                       )}
                     </VStack>
-                    <Button size="xs" variant="outline" onClick={() => void copyTrace()}>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      aria-label="Copiar trace do preview para a area de transferencia"
+                      disabled={!result.trace.length}
+                      onClick={() => void copyTrace()}
+                    >
                       Copiar trace
                     </Button>
                   </VStack>

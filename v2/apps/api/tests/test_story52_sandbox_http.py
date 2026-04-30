@@ -1,7 +1,10 @@
 """Story 5.2: POST sandbox-run (sem depender de draft UUID)."""
 
+from contextlib import asynccontextmanager
 from unittest.mock import patch
 
+import pytest
+import sqlalchemy.exc as sa_exc
 from fastapi.testclient import TestClient
 
 from app.api.routes import me_flows as me_flows_routes
@@ -16,6 +19,88 @@ _BODY = {"fixture_message": {"type": "text", "body": "hi"}}
 
 def _url(flow_key: str = "atdd-flow") -> str:
     return f"/v1/me/flows/{flow_key}/sandbox-run"
+
+
+def test_sandbox_environment_capital_s_still_sandbox_200(client: TestClient) -> None:
+    r = client.post(
+        _url(),
+        headers=_HDR,
+        params={"environment": "Sandbox"},
+        json=_BODY,
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_sandbox_fixture_message_too_large_422(client: TestClient) -> None:
+    body = {"fixture_message": {"x": "y" * 400_000}}
+    r = client.post(_url(), headers=_HDR, json=body)
+    assert r.status_code == 422
+    errs = r.json().get("errors") or []
+    assert any(e.get("field") == "fixture_message" for e in errs)
+
+
+def test_sandbox_flow_id_not_uuid_nor_atdd_key_422(client: TestClient) -> None:
+    r = client.post(
+        "/v1/me/flows/not-a-uuid/sandbox-run",
+        headers=_HDR,
+        params={"environment": "sandbox"},
+        json=_BODY,
+    )
+    assert r.status_code == 422
+    errs = r.json().get("errors") or []
+    assert any(e.get("field") == "flow_id" for e in errs)
+
+
+def test_sandbox_draft_uuid_503_without_database_url(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "")
+    import app.core.config as cfg
+
+    cfg.get_settings.cache_clear()
+    try:
+        fid = "11111111-1111-4111-8111-111111111112"
+        r = client.post(
+            f"/v1/me/flows/{fid}/sandbox-run",
+            headers=_HDR,
+            params={"environment": "sandbox"},
+            json=_BODY,
+        )
+        assert r.status_code == 503
+    finally:
+        cfg.get_settings.cache_clear()
+
+
+def test_sandbox_persist_sqlalchemy_degraded_returns_trace(
+    client: TestClient,
+) -> None:
+    @asynccontextmanager
+    async def boom(tenant_id):
+        class Ses:
+            def add(self, _o):
+                pass
+
+            async def flush(self):
+                raise sa_exc.OperationalError("stmt", {}, orig=Exception("x"))
+
+        yield Ses()
+
+    with (
+        patch(
+            "app.api.routes.me_flows.get_settings",
+            return_value=Settings(
+                auth_dev_stub=True,
+                database_url="postgresql+asyncpg://u:p@localhost:5432/t",
+            ),
+        ),
+        patch("app.api.routes.me_flows.tenant_session", boom),
+    ):
+        r = client.post(_url(), headers=_HDR, json=_BODY)
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["persisted"] is False
+    assert "fixture_fingerprint_sha256_16" in "\n".join(data["trace"])
 
 
 def test_sandbox_environment_production_rejected_422(client: TestClient) -> None:
@@ -70,7 +155,7 @@ def test_sandbox_atdd_flow_rejected_when_stub_disabled(client: TestClient) -> No
     ):
         r = client.post(_url(), headers=_HDR, json=_BODY)
     assert r.status_code == 422
-    errs = (r.json().get("errors") or [])
+    errs = r.json().get("errors") or []
     assert any(e.get("field") == "flow_id" for e in errs)
 
 
@@ -105,9 +190,7 @@ def test_openapi_sandbox_post_200_schema_has_trace_fields(client: TestClient) ->
     assert r.status_code == 200
     spec = r.json()
     op = (
-        spec.get("paths", {})
-        .get("/v1/me/flows/{flow_id}/sandbox-run", {})
-        .get("post")
+        spec.get("paths", {}).get("/v1/me/flows/{flow_id}/sandbox-run", {}).get("post")
         or {}
     )
     res200 = (op.get("responses") or {}).get("200") or {}

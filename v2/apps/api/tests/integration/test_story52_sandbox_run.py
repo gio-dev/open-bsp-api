@@ -70,3 +70,23 @@ def test_sandbox_run_persists_row_for_draft_uuid(client: TestClient) -> None:
         ).fetchone()
     assert row is not None
     assert row[1] == data["correlation_id"]
+
+
+@pytest.mark.integration
+def test_sandbox_run_draft_not_visible_other_tenant(client: TestClient) -> None:
+    name = "sandbox-draft-other-tenant"
+    r = client.post(
+        "/v1/me/flows",
+        headers=_HDR,
+        json={"name": name, "definition": _minimal_valid()},
+    )
+    assert r.status_code == 201, r.text
+    fid = r.json()["id"]
+    other = "22222222-2222-4222-8222-222222222222"
+    r2 = client.post(
+        f"/v1/me/flows/{fid}/sandbox-run",
+        headers={**_HDR, "X-Dev-Tenant-Id": other},
+        params={"environment": "sandbox"},
+        json={"fixture_message": {"type": "text"}},
+    )
+    assert r2.status_code == 404, r2.text

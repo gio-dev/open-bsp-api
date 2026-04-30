@@ -1,7 +1,7 @@
 ---
 story_key: 5-3-publish-permissao-ambiente
 epic: epic-5
-status: ready-for-dev
+status: done
 vs_validated: true
 vs_date: 2026-04-23
 atdd_ready: true
@@ -30,10 +30,10 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ## Tasks / Subtasks
 
-- [ ] RBAC: papel para publish por ambiente (ex. so admin em prod).
-- [ ] Transacao: ativar versao + registo audit append-only.
-- [ ] Admin-web: confirmacao; ambiente visivel (UX-DR4 em erro).
-- [ ] Testes 403; ATDD `test_epic5_story53_publish_atdd.py`.
+- [x] RBAC: papel para publish por ambiente (ex. so admin em prod).
+- [x] Transacao: ativar versao + registo audit append-only.
+- [x] Admin-web: confirmacao; ambiente visivel (UX-DR4 em erro).
+- [x] Testes 403; ATDD `test_epic5_story53_publish_atdd.py`.
 
 ## Party Mode (CS) - perspetivas
 
@@ -89,11 +89,30 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ### Agent Model Used
 
-_(preencher na implementacao)_
+Cursor agent (DS / dev-story), 2026-04-30.
 
 ### Completion Notes List
 
+- API: `POST /v1/me/flows/{flow_id}/publish` com `environment` (development | staging | production); idempotencia por fingerprint (200 + `idempotent_repeat` sem novo audit); audit append-only `resource_type=flow_publish`.
+- RBAC: `production` org_admin apenas; dev/staging FLOW_EDITOR_ROLES.
+- CR (pos-implementacao): transaccao unica (sem TOCTOU load-then-save); `SELECT ... FOR UPDATE` na activacao; gate sandbox (`require_sandbox_success_before_publish`, omissao true; `OPENBSP_REQUIRE_SANDBOX_BEFORE_PUBLISH`); sem gate para `atdd-flow`; `IntegrityError` no flush devolve 409; rascunho por tenant (`_get_draft` + tenant); OpenAPI inclui 409; 422 de validacao deixa dialog de publish aberto na consola (UX-DR4).
+- Testes: integracao sandbox antes de publish; 422 sem sandbox previo; 404 publish UUID de outro tenant; 403 finance/support; ATDD apenas 200.
+- Admin-web: Dialog de confirmacao com ambiente em destaque antes do publish.
+
 ### File List
+
+- `v2/apps/api/alembic/versions/020_tenant_flow_publish_activations.py`
+- `v2/apps/api/app/db/models_flows.py`
+- `v2/apps/api/app/core/config.py`
+- `v2/apps/api/app/tenancy/rbac.py`
+- `v2/apps/api/app/api/routes/me_flows.py`
+- `v2/apps/api/app/main.py`
+- `v2/apps/api/tests/test_story53_publish_http.py`
+- `v2/apps/api/tests/integration/test_story53_flow_publish.py`
+- `v2/apps/api/tests/atdd/test_epic5_story53_publish_atdd.py`
+- `v2/apps/api/tests/policy/test_openapi_gate.py`
+- `v2/apps/admin-web/src/features/flows/FlowEditorPage.tsx`
+- `v2/pyproject.toml` (ruff per-file ignores I001 nos testes das stories 52/53)
 
 ---
 
@@ -102,3 +121,5 @@ _(preencher na implementacao)_
 - 2026-04-23: **[CS]** story individual; Party Mode + Advanced Elicitation.
 - 2026-04-23: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-23: **[AT]** `test_epic5_story53_publish_atdd.py`.
+- 2026-04-30: **[DS]** implementacao publish + permissao ambiente; documentacao sprint/story atualizada para review.
+- 2026-04-30: **[CR]** remediacao itens do code review (sandbox gate, 409, tenant, OpenAPI, UX, testes); CI Docker verde; story `done`.

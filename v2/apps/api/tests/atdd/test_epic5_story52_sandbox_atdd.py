@@ -19,3 +19,11 @@ def test_story_52_sandbox_run_endpoint(client: TestClient):
         json={"fixture_message": {"type": "text", "body": "hi"}},
     )
     assert r.status_code == 200, r.text
+    data = r.json()
+    assert data.get("environment") == "sandbox"
+    assert "persisted" in data
+    assert "fixture_fingerprint" in data
+    trace = data.get("trace") or []
+    joined = "\n".join(trace)
+    assert "sandbox:" in joined
+    assert "production WhatsApp" in joined or "Meta send" in joined

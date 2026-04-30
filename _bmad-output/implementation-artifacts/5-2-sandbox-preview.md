@@ -1,7 +1,7 @@
 ---
 story_key: 5-2-sandbox-preview
 epic: epic-5
-status: review
+status: done
 vs_validated: true
 vs_date: 2026-04-23
 atdd_ready: true
@@ -98,7 +98,9 @@ Composer (DS Story 5.2)
 - Persistencia opcional quando `DATABASE_URL`: tabela `tenant_flow_sandbox_runs` (019) com `trace`, `correlation_id`, `fixture`; RLS tenant.
 - Chave literal `atdd-flow`: apenas com `AUTH_DEV_STUB` ou `ALLOW_ATDD_SANDBOX_FLOW_KEY` (Settings); caso contrario 422 em `flow_id`.
 - Resposta inclui `persisted` (gravacao opcional pode falhar sem bloquear trace) e `fixture_fingerprint` (SHA-256 16 hex do fixture); linha correspondente no trace.
-- Simulador: doc BFS/diamante; fixture completo no trace ate 8k chars.
+- Simulador: doc BFS/diamante; preview do fixture no trace limitado por `SANDBOX_TRACE_FIXTURE_PREVIEW_CHARS` (payload/BD mantem fixture completo ate `SANDBOX_FIXTURE_MAX_JSON_BYTES`).
+- CI API Docker (`docker compose --profile ci run --rm api-ci`): **201** testes passados (2026-04-30); filtro pytest inclui `epic5_atdd`.
+- Admin-web: Vitest ATDD `epic5-story52-sandbox-drawer` passa; suite completa `admin-web-ci` pode falhar por timeout em testes nao-5.2 no ambiente Docker local (investigar separadamente).
 - Admin: `SandboxFlowDrawer` na inbox (visivel apenas com ambiente sandbox), Drawer Chakra lado lista; chama apenas sandbox-run (sem `/messages/send`).
 - Marker pytest `epic5_atdd` em `test_epic5_story52_sandbox_atdd.py`.
 
@@ -118,6 +120,7 @@ Composer (DS Story 5.2)
 - `v2/apps/admin-web/src/features/inbox/SandboxFlowDrawer.tsx`
 - `v2/apps/admin-web/src/features/inbox/InboxPage.tsx`
 - `v2/apps/admin-web/src/atdd/epic5-story52-sandbox-drawer.atdd.test.tsx`
+- `v2/apps/api/Dockerfile` (marcador `epic5_atdd` no CI)
 - `_bmad-output/implementation-artifacts/5-2-sandbox-preview.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
@@ -129,4 +132,5 @@ Composer (DS Story 5.2)
 - 2026-04-23: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-23: **[AT]** `test_epic5_story52_sandbox_atdd.py`.
 - 2026-04-29: **[DS]** API sandbox-run sync, migracao 019, drawer inbox, testes ATDD/policy/unidade.
-- 2026-04-29: **[CR]** Party Mode: `atdd-flow` so com stub/`ALLOW_ATDD_SANDBOX_FLOW_KEY`; resposta `persisted` + `fixture_fingerprint` + trace; persist falha devolve trace (log); BFS/documentacao dedal; testes HTTP environment/401/403/OpenAPI 200; integracao gravacao DB; ATDD so 200; admin drawer UX+a11y+erros categorizados.
+- 2026-04-29: **[CR]** Party Mode: hardening sandbox, trace, testes HTTP/OpenAPI, drawer UX.
+- 2026-04-30: **[DS]** Conclusao: API CI Docker verde; story `done`; ATDD drawer 5.2 verde em Vitest.

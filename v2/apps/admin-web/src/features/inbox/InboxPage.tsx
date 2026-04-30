@@ -748,7 +748,14 @@ export default function InboxPage() {
           p={3}
           minH={{ md: "320px" }}
         >
-          <HStack mb={2} display={{ base: "flex", md: "none" }}>
+          <HStack
+            mb={2}
+            justify="space-between"
+            align="center"
+            display={{ base: "flex", md: "none" }}
+            flexWrap="wrap"
+            gap={2}
+          >
             <Button
               size="xs"
               variant="ghost"
@@ -758,6 +765,9 @@ export default function InboxPage() {
             >
               Lista
             </Button>
+            <SandboxFlowDrawer
+              inboxEnvironment={header?.environment ?? env}
+            />
           </HStack>
           {!selectedId ? (
             <Text color="fg.muted" data-testid="inbox-thread-placeholder">

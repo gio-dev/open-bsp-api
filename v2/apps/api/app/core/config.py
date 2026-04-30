@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,7 +16,34 @@ class Settings(BaseSettings):
     """True: resolve tenant from X-Dev-Tenant-Id (dev/CI; replace with real auth)."""
 
     allow_atdd_sandbox_flow_key: bool = False
-    """True: permite `flow_id=atdd-flow` sem AUTH_DEV_STUB (ex. staging controlado)."""
+    """Liga a chave literal `atdd-flow` sem AUTH_DEV_STUB (CI/staging *estritamente
+    controlado*). Nunca em ambiente de dados reais: o stub ignora rascunho gravado e
+    debilita auditoria (nao ha UUID de draft). Omissao: False."""
+
+    sandbox_fixture_max_json_bytes: int = 256 * 1024
+    """Tamanho maximo do JSON canonico de `fixture_message` (bytes); mitigacao DoS.
+
+    (SANDBOX_FIXTURE_MAX_JSON_BYTES)
+    """
+
+    sandbox_trace_fixture_preview_chars: int = 512
+    """Max caracteres do fixture incluidos em linhas do trace (resto omitido no log).
+
+    Conteudo completo do fixture continua no corpo da resposta e, se persistido, na BD.
+    """
+
+    require_sandbox_success_before_publish: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "OPENBSP_REQUIRE_SANDBOX_BEFORE_PUBLISH",
+            "require_sandbox_success_before_publish",
+        ),
+        description=(
+            "Exige pelo menos um sandbox-run succeeded para o mesmo draft antes de "
+            "publish (UUID real; atdd-flow isenta). Emergencia: "
+            "OPENBSP_REQUIRE_SANDBOX_BEFORE_PUBLISH=false."
+        ),
+    )
 
     session_signing_secret: str | None = None
     """HMAC secret cookie consola (SESSION_SIGNING_SECRET). Obrigatorio sem stub."""
