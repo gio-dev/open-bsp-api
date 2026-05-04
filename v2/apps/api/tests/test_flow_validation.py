@@ -8,12 +8,36 @@ from app.services.flow_validation import (
 )
 
 
+def test_send_text_requires_body_when_action_type_set() -> None:
+    graph = FlowGraphPayload.model_validate(
+        {
+            "nodes": [
+                {"id": "t1", "kind": "trigger"},
+                {
+                    "id": "a1",
+                    "kind": "action",
+                    "action_type": "send_text",
+                    "text_body": "",
+                },
+            ],
+            "edges": [{"source": "t1", "target": "a1"}],
+        }
+    )
+    errs = validate_flow_structure(graph)
+    assert any(e["field"] == "nodes.a1.text_body" for e in errs)
+
+
 def test_valid_simple_flow() -> None:
     graph = FlowGraphPayload.model_validate(
         {
             "nodes": [
                 {"id": "t1", "kind": "trigger"},
-                {"id": "a1", "kind": "action"},
+                {
+                    "id": "a1",
+                    "kind": "action",
+                    "action_type": "send_text",
+                    "text_body": "x",
+                },
             ],
             "edges": [{"source": "t1", "target": "a1"}],
         }

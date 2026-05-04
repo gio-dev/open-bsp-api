@@ -39,7 +39,7 @@ from app.services.flow_validation import validate_flow_definition
 from app.tenancy.deps import (
     TenantUserContext,
     console_flow_editor_context,
-    console_tenant_user_context,
+    console_flow_publish_versions_context,
 )
 from app.tenancy.rbac import roles_may_publish_flow
 
@@ -273,6 +273,7 @@ _RESPONSES_SANDBOX = {
 _RESPONSES_VERSION_LIST = {
     200: {"model": FlowVersionListResponse},
     401: {"model": CanonicalErrorResponse},
+    403: {"model": CanonicalErrorResponse},
     404: {"model": CanonicalErrorResponse},
     422: {"model": CanonicalValidationErrorResponse},
     503: {"model": CanonicalErrorResponse},
@@ -281,6 +282,7 @@ _RESPONSES_VERSION_LIST = {
 _RESPONSES_VERSION_DETAIL = {
     200: {"model": FlowVersionDetailOut},
     401: {"model": CanonicalErrorResponse},
+    403: {"model": CanonicalErrorResponse},
     404: {"model": CanonicalErrorResponse},
     422: {"model": CanonicalValidationErrorResponse},
     503: {"model": CanonicalErrorResponse},
@@ -563,9 +565,12 @@ async def get_flow_publish_version_detail(
     req: Request,
     flow_id: Annotated[str, Path(min_length=1, max_length=256)],
     version_id: uuid.UUID,
-    ctx: Annotated[TenantUserContext, Depends(console_tenant_user_context)],
+    ctx: Annotated[TenantUserContext, Depends(console_flow_publish_versions_context)],
 ) -> FlowVersionDetailOut | JSONResponse:
-    """Snapshot material de uma publicacao (lista resumida em `.../versions`)."""
+    """Snapshot material de uma publicacao (lista resumida em `.../versions`).
+
+    RBAC: org_admin ou operator (`FLOW_PUBLISH_VERSION_READ_ROLES`).
+    """
     settings = get_settings()
     _must_db(settings)
     async with tenant_session(ctx.tenant_id) as session:
@@ -603,7 +608,7 @@ async def get_flow_publish_version_detail(
 async def list_flow_publish_versions(
     req: Request,
     flow_id: Annotated[str, Path(min_length=1, max_length=256)],
-    ctx: Annotated[TenantUserContext, Depends(console_tenant_user_context)],
+    ctx: Annotated[TenantUserContext, Depends(console_flow_publish_versions_context)],
     environment: Annotated[
         PublishEnvironment | None,
         Query(description="Filtrar por ambiente runtime (opcional)."),
@@ -611,7 +616,10 @@ async def list_flow_publish_versions(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> FlowVersionListResponse | JSONResponse:
-    """Historico append-only ordenado por `published_at` mais recentes primeiro."""
+    """Historico append-only ordenado por `published_at` mais recentes primeiro.
+
+    RBAC: org_admin ou operator (`FLOW_PUBLISH_VERSION_READ_ROLES`).
+    """
     settings = get_settings()
     _must_db(settings)
     async with tenant_session(ctx.tenant_id) as session:

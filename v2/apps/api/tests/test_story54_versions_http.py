@@ -13,17 +13,37 @@ _HDR_ADMIN = {
     "X-Dev-Tenant-Id": "11111111-1111-4111-8111-111111111111",
     "X-Dev-Roles": "org_admin",
 }
+_HDR_OP = {
+    "X-Dev-Tenant-Id": "11111111-1111-4111-8111-111111111111",
+    "X-Dev-Roles": "operator",
+}
 _HDR_VIEWER = {
     "X-Dev-Tenant-Id": "11111111-1111-4111-8111-111111111111",
     "X-Dev-Roles": "viewer",
 }
 
 
-def test_versions_list_viewer_allowed_atdd_flow(client: TestClient) -> None:
-    """Qualquer papel tenant pode ler historico material (Story 5.4)."""
+def test_versions_list_viewer_forbidden(client: TestClient) -> None:
     r = client.get(
         "/v1/me/flows/atdd-flow/versions",
         headers=_HDR_VIEWER,
+        params={"limit": 5, "offset": 0},
+    )
+    assert r.status_code == 403
+
+
+def test_versions_detail_viewer_forbidden(client: TestClient) -> None:
+    r = client.get(
+        f"/v1/me/flows/atdd-flow/versions/{uuid.uuid4()}",
+        headers=_HDR_VIEWER,
+    )
+    assert r.status_code == 403
+
+
+def test_versions_list_operator_allowed_atdd_flow(client: TestClient) -> None:
+    r = client.get(
+        "/v1/me/flows/atdd-flow/versions",
+        headers=_HDR_OP,
         params={"limit": 5, "offset": 0},
     )
     assert r.status_code == 200, r.text
@@ -53,3 +73,9 @@ def test_versions_detail_requires_db_else_503(client: TestClient) -> None:
             headers=_HDR_ADMIN,
         )
     assert r.status_code == 503
+
+
+def test_flow_publish_version_read_roles_align_with_flow_editor() -> None:
+    from app.tenancy.rbac import FLOW_EDITOR_ROLES, FLOW_PUBLISH_VERSION_READ_ROLES
+
+    assert FLOW_PUBLISH_VERSION_READ_ROLES == FLOW_EDITOR_ROLES

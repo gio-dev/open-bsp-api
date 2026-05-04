@@ -41,6 +41,17 @@ describe("ATDD Epic 4 Story 4.2 inbox tags UI", () => {
             }),
           });
         }
+        if (url.includes("/mode")) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              conversation_id: "conv-a",
+              mode: "human_active",
+              since: "2026-01-01T00:00:00Z",
+            }),
+          });
+        }
         if (url.includes("/handoff")) {
           return Promise.resolve({
             ok: true,

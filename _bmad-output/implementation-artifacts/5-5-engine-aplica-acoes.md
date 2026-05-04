@@ -1,7 +1,7 @@
 ---
 story_key: 5-5-engine-aplica-acoes
 epic: epic-5
-status: ready-for-dev
+status: done
 vs_validated: true
 vs_date: 2026-04-23
 atdd_ready: true
@@ -31,10 +31,10 @@ code_location: v2/apps/api
 
 ## Tasks / Subtasks
 
-- [ ] Loop: evento normalizado pos-3.1 -> avaliacao de regras publicadas -> acoes.
-- [ ] Acoes: enviar mensagem (3.2), aplicar tag (4.2), emitir handoff (4.3) via contratos internos.
-- [ ] Erros visiveis em logs/telemetria; correlation id.
-- [ ] Endpoint de status ou metrica (ex. `GET /v1/me/engine/status`) para operacao; ATDD `test_epic5_story55_engine_atdd.py`.
+- [x] Loop: evento normalizado pos-3.1 -> avaliacao de regras publicadas -> acoes.
+- [x] Acoes: enviar mensagem (3.2), aplicar tag (4.2), emitir handoff (4.3) via contratos internos.
+- [x] Erros visiveis em logs/telemetria; correlation id (`log.warning`/`log.exception` por acao falhada).
+- [x] Endpoint de status ou metrica (ex. `GET /v1/me/engine/status`) para operacao; ATDD `test_epic5_story55_engine_atdd.py`.
 
 ## Party Mode (CS) - perspetivas
 
@@ -79,6 +79,12 @@ code_location: v2/apps/api
 - Depende de **3.1** e **5.3**; **4.1** minimo para QA fim-a-fim quando exigido.
 - Integracao com **f2** futura: gate de produto separado.
 
+## Backlog (P2 ? Party CR / produto)
+
+- **Match condicional** rico (alem de grafo unico-trigger).
+- **Varios fluxos activos** por ambiente (se o PRD nao for «um grafo vencedor por env»).
+- **Metricas** do motor (passos, skips, latencia); correlacao expandida com channel-health (4.4).
+
 ## Testing Requirements
 
 - ATDD: `v2/apps/api/tests/atdd/test_epic5_story55_engine_atdd.py`
@@ -92,11 +98,36 @@ code_location: v2/apps/api
 
 ### Agent Model Used
 
-_(preencher na implementacao)_
+Composer (Cursor agent).
 
 ### Completion Notes List
 
+- Feature flags: `OPENBSP_FLOW_ENGINE_ENABLED`, `OPENBSP_FLOW_ENGINE_ENVIRONMENTS` (default `staging`; CI inclui staging,development,sandbox).
+- Pos-inbound webhook: BFS desde trigger unico ate teto `MAX_ENGINE_STEPS`; acoes `send_text`, `apply_tag`, `handoff` via contratos inbox.
+- **Party CR:** `_resolve_runtime_environment` devolve `None` sem `phone_number_id` ou sem linha WABA ? motor **nao corre** (antes assumia `production`). Documentada semantica **um grafo activo por `(tenant, environment)`** (`activated_at` DESC) em README, docstring e `project-context.md`.
+- Testes: `tests/test_flow_engine_env.py` (parse env + resolucao); integracao ? duplicado webhook sem segundo outbound, `apply_tag`, `handoff`, skip quando `runtime_env` fora da allowlist.
+- `GET /v1/me/engine/status`; OpenAPI policy 401.
+- **CI:** `docker compose --profile ci` api-ci **222 passed** (pos-remediacao).
+
 ### File List
+
+- `v2/apps/api/app/core/config.py`
+- `v2/apps/api/app/services/flow_validation.py`
+- `v2/apps/api/app/services/flow_engine.py`
+- `v2/apps/api/app/inbox/tag_sync.py`
+- `v2/apps/api/app/inbox/handoff_sync.py`
+- `v2/apps/api/app/whatsapp/webhook_ingress.py`
+- `v2/apps/api/app/api/routes/me_engine.py`
+- `v2/apps/api/app/main.py`
+- `v2/apps/api/tests/test_flow_engine_env.py`
+- `v2/apps/api/tests/atdd/test_epic5_story55_engine_atdd.py`
+- `v2/apps/api/tests/test_story55_engine_http.py`
+- `v2/apps/api/tests/integration/test_story55_flow_engine.py`
+- `v2/apps/api/tests/policy/test_openapi_gate.py`
+- `v2/apps/api/tests/test_flow_validation.py`
+- `v2/docker-compose.yml`
+- `v2/README.md`
+- `_bmad-output/project-context.md`
 
 ---
 
@@ -105,3 +136,5 @@ _(preencher na implementacao)_
 - 2026-04-23: **[CS]** story individual; Party Mode + Advanced Elicitation.
 - 2026-04-23: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-23: **[AT]** `test_epic5_story55_engine_atdd.py`.
+- 2026-04-30: **[DS]** implementacao motor FR26/NFR-INT-02; flag ambiente; status endpoint; README + CI env; estado `review`.
+- 2026-04-30: **[CR Party Mode]** fallback ambiente, docs semantica, testes idempotencia/tag/handoff/allowlist, unit parse; story **done**.

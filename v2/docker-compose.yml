@@ -60,6 +60,9 @@ services:
       AUTH_DEV_STUB: "true"
       RUN_CI_SEED: "1"
       WHATSAPP_CLOUD_API_STUB: "true"
+      OPENBSP_FLOW_ENGINE_ENABLED: "true"
+      OPENBSP_FLOW_ENGINE_ENVIRONMENTS: "staging,development,sandbox"
+      OPENBSP_EMBED_JWT_SECRET: "test-openbsp-embed-jwt-secret-atdd-32chars"
 
   admin-web-ci:
     profiles: [ci]

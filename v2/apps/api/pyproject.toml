@@ -42,6 +42,13 @@ select = ["E", "F", "I"]
 "tests/test_story52_sandbox_http.py" = ["I001"]
 "tests/test_story53_publish_http.py" = ["I001"]
 "tests/test_story54_versions_http.py" = ["I001"]
+"tests/test_flow_engine_env.py" = ["I001"]
+"tests/test_story61_embed_http.py" = ["I001"]
+"tests/test_conversation_mode_unit.py" = ["I001"]
+"tests/atdd/test_epic6_story61_embed_session_atdd.py" = ["I001"]
+"tests/integration/test_story55_flow_engine.py" = ["I001"]
+"tests/integration/test_story61_embed_session.py" = ["I001"]
+"tests/integration/test_story62_conversation_mode.py" = ["I001"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -55,5 +62,6 @@ markers = [
     "epic3_atdd: Epic 3 ATDD subset (incremental CI gate)",
     "epic4_atdd: Epic 4 ATDD subset (incremental CI gate)",
     "epic5_atdd: Epic 5 ATDD subset (incremental CI gate)",
+    "epic6_atdd: Epic 6 ATDD subset (incremental CI gate)",
 ]
 asyncio_mode = "auto"

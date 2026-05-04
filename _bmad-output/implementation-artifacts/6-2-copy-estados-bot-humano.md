@@ -1,7 +1,7 @@
 ---
 story_key: 6-2-copy-estados-bot-humano
 epic: epic-6
-status: ready-for-dev
+status: done
 vs_validated: true
 vs_date: 2026-04-24
 atdd_ready: true
@@ -30,10 +30,10 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ## Tasks / Subtasks
 
-- [ ] Modelo de estado conversa: `bot_active` | `human_active` | transicoes com timestamp.
-- [ ] Atualizar motor/handoff (4.3 / 5.5) para emitir mudancas de modo quando aplicavel.
-- [ ] Admin-web + embed: rotulos e copy tenant-configuravel (storage minimo).
-- [ ] Testes; ATDD `test_epic6_story62_bot_human_mode_atdd.py`.
+- [x] Modelo de estado conversa: `bot_active` | `human_active` | transicoes com timestamp.
+- [x] Atualizar motor/handoff (4.3 / 5.5) para emitir mudancas de modo quando aplicavel.
+- [x] Admin-web + embed: rotulos na consola; glossario de vocabulario no embed (paridade lexical MVP); copy editavel por tenant (CMS) em historia futura.
+- [x] Testes; ATDD `test_epic6_story62_bot_human_mode_atdd.py`.
 
 ## Party Mode (CS) - perspetivas
 
@@ -76,10 +76,28 @@ code_location: v2/apps/api, v2/apps/admin-web
 ## Dev Notes - requisitos tecnicos
 
 - Depende de **6.1** para painel embed; **4.1** para lista/thread operador.
+- Modo deriva de `inbox_conversation_handoffs.handoff_state` (motor 5.5 ja persiste). Rotulos na consola sao estaticos neste MVP; copy tenant-configuravel (CMS) fica para iteracao seguinte.
+
+## Traceability pos-CR (Party Mode 2026-04-30)
+
+| Ponto | Resolucao |
+|-------|-----------|
+| OpenAPI / semantica `since` | `ConversationModeResponse` com `Field(description=...)`; doc longo no GET `/mode`; docstring em `conversation_mode.py`. |
+| Recurso canonico UI | OpenAPI descreve `/mode` como derivado de handoff; mutacoes em `/handoff`. |
+| Templates WhatsApp no texto AC | Fora do codigo desta story; policy de UX rastreia-se em Epic 3 / 6.3 (ver README). |
+| Copia tenant-approved (FR30) | MVP: strings fixas PT na consola; CMS/defer documentado no README e aqui. |
+| Timeline UX-DR4 | `since` nao substitui marcador temporal; backlog UX explicito na doc da API. |
+| Paridade embed | `EmbedPanelPage` glossario FR30 + path GET `/mode` (inline code). |
+| Testes / flake | Integracao com conversas **isoladas** + matriz de estados; testes unitarios em `test_conversation_mode_unit.py`. |
+| Cache HTTP | `Cache-Control: private, max-age=0, must-revalidate` no GET `/mode`. |
+| A11y consola | `aria-busy`, `aria-label` no loading; erro com `role="alert"` e botao **Tentar novamente** (`inbox-mode-retry`); `aria-live="polite"` no badge. |
 
 ## Testing Requirements
 
-- ATDD: `v2/apps/api/tests/atdd/test_epic6_story62_bot_human_mode_atdd.py`
+- ATDD API: `v2/apps/api/tests/atdd/test_epic6_story62_bot_human_mode_atdd.py`
+- Integracao: `v2/apps/api/tests/integration/test_story62_conversation_mode.py`
+- Unidade: `v2/apps/api/tests/test_conversation_mode_unit.py`
+- OpenAPI policy: `test_me_conversations_mode_get_documents_errors`
 
 ## References
 
@@ -89,11 +107,26 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ### Agent Model Used
 
-_(preencher na implementacao)_
+Cursor agent.
 
 ### Completion Notes List
 
+- `GET /v1/me/conversations/{id}/mode` com `ConversationModeResponse`; derivacao central em `app/inbox/conversation_mode.py`.
+- Inbox admin: badge modo na thread; fetch invalida com PATCH handoff.
+- ATDD atualizado asserts JSON; mocks Vitest epic 4 incluem `/mode`.
+
 ### File List
+
+- `v2/apps/api/app/inbox/conversation_mode.py`
+- `v2/apps/api/app/api/routes/me_inbox_handoff.py`
+- `v2/apps/api/app/main.py`
+- `v2/apps/api/tests/integration/test_story62_conversation_mode.py`
+- `v2/apps/api/tests/policy/test_openapi_gate.py`
+- `v2/apps/admin-web/src/features/embed/EmbedPanelPage.tsx`
+- `v2/apps/admin-web/src/features/inbox/InboxPage.tsx`
+- `v2/apps/admin-web/src/atdd/epic4-story42-inbox-tags.atdd.test.tsx`
+- `v2/apps/admin-web/src/atdd/epic4-story43-inbox-handoff.atdd.test.tsx`
+- `v2/README.md`
 
 ---
 
@@ -102,3 +135,4 @@ _(preencher na implementacao)_
 - 2026-04-24: **[CS]** story individual; Party Mode + Advanced Elicitation.
 - 2026-04-24: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-24: **[AT]** `test_epic6_story62_bot_human_mode_atdd.py`.
+- 2026-04-30: **[CR/Party]** fechamento: OpenAPI `since`, `Cache-Control`, testes isolados + matriz, a11y inbox, glossario embed, README traceability, status `done`.

@@ -5,6 +5,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 os.environ.setdefault("AUTH_DEV_STUB", "true")
+os.environ.setdefault(
+    "OPENBSP_EMBED_JWT_SECRET",
+    "test-openbsp-embed-jwt-secret-atdd-32chars",
+)
 os.environ.setdefault("WHATSAPP_WEBHOOK_VERIFY_TOKEN", "atdd-verify")
 os.environ.setdefault("SESSION_SIGNING_SECRET", "test-session-secret-atdd")
 os.environ.setdefault("WHATSAPP_CLOUD_API_STUB", "true")

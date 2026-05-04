@@ -1,6 +1,7 @@
 """ATDD Story 4.2 - Etiquetas inbox (RED until DS)."""
 
 import pytest
+from app.atdd_fixture_ids import ATDD_INBOX_CONVERSATION_ID
 from fastapi.testclient import TestClient
 
 pytestmark = [pytest.mark.atdd, pytest.mark.epic4_atdd]
@@ -22,7 +23,7 @@ def test_story_42_list_inbox_tags(client: TestClient):
 @pytest.mark.atdd
 def test_story_42_patch_conversation_tags(client: TestClient):
     r = client.patch(
-        "/v1/me/conversations/atdd-conv-1/tags",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/tags",
         headers=_HDR,
         params={"environment": "sandbox"},
         json={"tag_ids": [_ATDD_TAG_ID]},

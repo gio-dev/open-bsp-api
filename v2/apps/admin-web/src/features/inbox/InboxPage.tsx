@@ -171,6 +171,12 @@ type HandoffResponse = {
   updated_at: string | null;
 };
 
+type ConversationModeResponse = {
+  conversation_id: string;
+  mode: "bot_active" | "human_active";
+  since: string;
+};
+
 type AllTagsResponse = {
   items: TagBrief[];
 };
@@ -326,6 +332,25 @@ export default function InboxPage() {
     },
   });
 
+  const modeQuery = useQuery({
+    queryKey: ["inbox", "mode", selectedId, env],
+    enabled: Boolean(selectedId),
+    staleTime: 15_000,
+    queryFn: async (): Promise<ConversationModeResponse> => {
+      const q = new URLSearchParams({ environment: env });
+      const r = await fetch(
+        apiPath(
+          `/v1/me/conversations/${encodeURIComponent(selectedId!)}/mode?${q}`,
+        ),
+        apiInit(),
+      );
+      if (!r.ok) {
+        throw new Error(await readErrorMessage(r));
+      }
+      return r.json() as Promise<ConversationModeResponse>;
+    },
+  });
+
   useEffect(() => {
     const d = handoffQuery.data;
     if (d) {
@@ -455,6 +480,7 @@ export default function InboxPage() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["inbox", "handoff", selectedId, env] });
+      qc.invalidateQueries({ queryKey: ["inbox", "mode", selectedId, env] });
     },
   });
 
@@ -786,6 +812,56 @@ export default function InboxPage() {
             </Text>
           ) : (
             <VStack data-testid="inbox-thread" align="stretch" gap={2}>
+              <HStack flexWrap="wrap" gap={2} align="center" justify="space-between">
+                <Heading size="sm">Conversa</Heading>
+                <HStack
+                  minH="28px"
+                  align="center"
+                  gap={2}
+                  aria-busy={modeQuery.isLoading ? true : undefined}
+                >
+                  {modeQuery.isLoading ? (
+                    <Spinner
+                      size="sm"
+                      data-testid="inbox-mode-skeleton"
+                      aria-label="A carregar modo da conversa"
+                    />
+                  ) : null}
+                  {modeQuery.isError ? (
+                    <VStack align="end" gap={1} role="alert" data-testid="inbox-mode-error">
+                      <Text fontSize="xs" color="red.fg">
+                        Nao foi possivel obter o modo da conversa (bot/humano).{" "}
+                        {(modeQuery.error as Error).message}
+                      </Text>
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        onClick={() => {
+                          void modeQuery.refetch();
+                        }}
+                        data-testid="inbox-mode-retry"
+                      >
+                        Tentar novamente
+                      </Button>
+                    </VStack>
+                  ) : null}
+                  {modeQuery.data ? (
+                    <Box aria-live="polite" as="span">
+                      <Badge
+                        variant="surface"
+                        colorPalette={
+                          modeQuery.data.mode === "human_active" ? "blue" : "gray"
+                        }
+                        data-testid="inbox-conversation-mode"
+                      >
+                        {modeQuery.data.mode === "human_active"
+                          ? "Assistencia humana"
+                          : "Bot ativo"}
+                      </Badge>
+                    </Box>
+                  ) : null}
+                </HStack>
+              </HStack>
               <Box
                 data-testid="inbox-handoff-panel"
                 borderWidth="1px"

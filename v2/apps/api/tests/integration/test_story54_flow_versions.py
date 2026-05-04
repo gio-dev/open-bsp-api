@@ -184,3 +184,39 @@ def test_versions_ordered_newest_first_pagination_total(client: TestClient) -> N
         headers=_HDR_OP,
     )
     assert r404.status_code == 404, r404.text
+
+
+@pytest.mark.integration
+def test_versions_list_other_tenant_draft_returns_404(
+    client: TestClient,
+) -> None:
+    """Rascunho de outro tenant: historico nao listavel (isolamento)."""
+    name = f"v54-xtenant-{uuid.uuid4().hex[:8]}"
+    r = client.post(
+        "/v1/me/flows",
+        headers=_HDR_OP,
+        json={"name": name, "definition": _graph_v1()},
+    )
+    assert r.status_code == 201, r.text
+    fid = r.json()["id"]
+    _sandbox_ok(client, fid)
+    rp = client.post(
+        f"/v1/me/flows/{fid}/publish",
+        headers=_HDR_OP,
+        json={"environment": "staging"},
+    )
+    assert rp.status_code == 200, rp.text
+    assert (
+        client.get(
+            f"/v1/me/flows/{fid}/versions",
+            headers=_HDR_OP,
+        ).json()["total"]
+        >= 1
+    )
+
+    other = "22222222-2222-4222-8222-222222222222"
+    rx = client.get(
+        f"/v1/me/flows/{fid}/versions",
+        headers={**_HDR_OP, "X-Dev-Tenant-Id": other},
+    )
+    assert rx.status_code == 404, rx.text

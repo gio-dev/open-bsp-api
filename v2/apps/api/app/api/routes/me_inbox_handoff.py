@@ -13,11 +13,13 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
+from starlette.responses import Response
 
 from app.core.config import get_settings
 from app.core.errors import CanonicalErrorResponse
 from app.db.models_inbox import InboxConversation, InboxConversationHandoff
 from app.db.session import tenant_session
+from app.inbox.conversation_mode import conversation_mode_and_since
 from app.tenancy.deps import TenantUserContext, console_tenant_user_context
 from app.tenancy.rbac import INBOX_TAG_ROLES, ORG_WRITE_ROLES
 
@@ -82,6 +84,27 @@ class HandoffPatchBody(BaseModel):
 
     accept: bool | None = None
     queue_id: str | None = Field(default=None, max_length=128)
+
+
+class ConversationModeResponse(BaseModel):
+    """Read-only view; servidor e fonte de verdade (modo nao editavel)."""
+
+    conversation_id: str = Field(
+        description="ID da conversa (resto das rotas inbox).",
+    )
+    mode: Literal["bot_active", "human_active"] = Field(
+        description=(
+            "`human_active` quando o handoff esta num estado do pipeline humano "
+            "(`pending_handoff`, `queued`, `accepted`, `failed`). "
+            "`bot_active` quando esta `automated` ou sem handoff valido."
+        ),
+    )
+    since: str = Field(
+        description=(
+            "Referencia temporal do modo (ISO 8601, com offset ou Z). "
+            "Ver doc do endpoint e `app.inbox.conversation_mode`."
+        ),
+    )
 
 
 def _resolve_env(
@@ -169,6 +192,68 @@ async def get_conversation_handoff(
         )
 
     return _row_to_response(cid, row)
+
+
+@router.get(
+    "/me/conversations/{conversation_id}/mode",
+    response_model=ConversationModeResponse,
+    responses=_HANDOFF_GET_RESPONSES,
+    summary="Modo bot/humano da conversa (Story 6.2)",
+    description=(
+        "Recurso **derivado**: `mode` e `since` derivam-se da conversa e de "
+        "`inbox_conversation_handoffs`.\n\n"
+        "Operacoes de fila/intent: `GET`/`PATCH /me/conversations/{id}/handoff`.\n\n"
+        "**since:** instante coerente com o ultimo estado persistido; semantica em "
+        "`app.inbox.conversation_mode`. "
+        "Nao substitui marcadores na timeline (UX backlog).\n\n"
+        "Erros: 401/403 authz, 404 conversa, 422 id/env, 503 BD."
+    ),
+)
+async def get_conversation_mode(
+    response: Response,
+    conversation_id: str,
+    ctx: Annotated[TenantUserContext, Depends(console_tenant_user_context)],
+    environment: str | None = Query(default=None, max_length=32),
+    x_console_environment: str | None = Header(
+        default=None,
+        alias="X-Console-Environment",
+    ),
+    x_environment: str | None = Header(default=None, alias="X-Environment"),
+) -> ConversationModeResponse:
+    env = _resolve_env(environment, x_console_environment, x_environment)
+    cid = conversation_id.strip()
+    if not cid or len(cid) > 128:
+        raise HTTPException(status_code=422, detail="invalid conversation id")
+
+    settings = get_settings()
+    if not settings.database_url:
+        raise HTTPException(status_code=503, detail="database unavailable")
+
+    async with tenant_session(ctx.tenant_id) as session:
+        conv = await session.scalar(
+            select(InboxConversation).where(
+                InboxConversation.tenant_id == ctx.tenant_id,
+                InboxConversation.id == cid,
+                InboxConversation.environment == env,
+            )
+        )
+        if conv is None:
+            raise HTTPException(status_code=404, detail="conversation not found")
+
+        row = await session.scalar(
+            select(InboxConversationHandoff).where(
+                InboxConversationHandoff.tenant_id == ctx.tenant_id,
+                InboxConversationHandoff.conversation_id == cid,
+            )
+        )
+
+    mode, since_dt = conversation_mode_and_since(conv=conv, handoff=row)
+    response.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
+    return ConversationModeResponse(
+        conversation_id=cid,
+        mode=mode,
+        since=since_dt.isoformat(),
+    )
 
 
 @router.patch(

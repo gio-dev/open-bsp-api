@@ -8,7 +8,10 @@ MAX_FLOW_NODES = 200
 
 
 class FlowNodePayload(BaseModel):
-    """Um no rule-based (trigger|condition|acao)."""
+    """Um no rule-based (trigger|condition|acao).
+
+    Campos `action_*` aplicam-se quando ``kind == \"action\"`` (Story 5.5).
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -17,12 +20,29 @@ class FlowNodePayload(BaseModel):
         ...,
         examples=["trigger", "condition", "action"],
     )
+    action_type: str | None = Field(
+        default=None,
+        description='Para kind=action: "send_text" | "apply_tag" | "handoff".',
+    )
+    text_body: str | None = Field(default=None, max_length=4096)
+    tag_name: str | None = Field(default=None, max_length=128)
+    handoff_intent: str | None = Field(default=None, max_length=512)
 
     @field_validator("kind")
     @classmethod
     def _kind_ok(cls, v: str) -> str:
         if v not in ("trigger", "condition", "action"):
             msg = 'kind deve ser trigger, condition ou action (recebido "{}")'
+            raise ValueError(msg.format(v))
+        return v
+
+    @field_validator("action_type")
+    @classmethod
+    def _action_type_ok(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        if v not in ("send_text", "apply_tag", "handoff"):
+            msg = 'action_type deve ser send_text, apply_tag ou handoff (recebido "{}")'
             raise ValueError(msg.format(v))
         return v
 
@@ -175,6 +195,30 @@ def validate_flow_structure(graph: FlowGraphPayload) -> list[dict[str, str]]:
                     "message": "no nao alcancavel a partir do trigger",
                 },
             )
+        return errs
+
+    for nid in reachable:
+        n = by_id[nid]
+        if n.kind != "action" or not n.action_type:
+            continue
+        if n.action_type == "send_text":
+            if not (n.text_body and str(n.text_body).strip()):
+                errs.append(
+                    {
+                        "field": f"nodes.{nid}.text_body",
+                        "message": "obrigatorio quando action_type=send_text",
+                    },
+                )
+        elif n.action_type == "apply_tag":
+            if not (n.tag_name and str(n.tag_name).strip()):
+                errs.append(
+                    {
+                        "field": f"nodes.{nid}.tag_name",
+                        "message": "obrigatorio quando action_type=apply_tag",
+                    },
+                )
+
+    if errs:
         return errs
 
     has_action = False

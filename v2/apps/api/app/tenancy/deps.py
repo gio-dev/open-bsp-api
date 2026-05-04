@@ -16,6 +16,7 @@ from app.core.config import get_settings
 from app.tenancy.rbac import (
     API_KEY_MANAGE_ROLES,
     FLOW_EDITOR_ROLES,
+    FLOW_PUBLISH_VERSION_READ_ROLES,
     INBOX_TAG_ROLES,
     MESSAGE_SEND_ROLES,
     ORG_WRITE_ROLES,
@@ -147,6 +148,19 @@ async def console_flow_editor_context(
         raise HTTPException(
             status_code=403,
             detail="org_admin or operator role required for flow drafts",
+        )
+    return ctx
+
+
+async def console_flow_publish_versions_context(
+    ctx: Annotated[TenantUserContext, Depends(console_tenant_user_context)],
+) -> TenantUserContext:
+    if not (ctx.roles & FLOW_PUBLISH_VERSION_READ_ROLES):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "org_admin or operator role required for flow publish version history"
+            ),
         )
     return ctx
 

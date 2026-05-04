@@ -1,7 +1,7 @@
 ---
 story_key: 6-1-embed-autenticado-jwt-validacao-origem
 epic: epic-6
-status: ready-for-dev
+status: done
 vs_validated: true
 vs_date: 2026-04-24
 atdd_ready: true
@@ -30,11 +30,11 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ## Tasks / Subtasks
 
-- [ ] Emissao/validacao JWT embed (ou token opaco) com claims tenant + exp curtos conforme ADR.
-- [ ] Allowlist `Origin` / `embed_parent` por tenant; rejeitar origem nao autorizada.
-- [ ] Contrato postMessage renovacao documentado no README embed.
-- [ ] OpenAPI; testes; ATDD `test_epic6_story61_embed_session_atdd.py`.
-- [ ] Shell iframe admin-web ou app embed dedicada conforme CDA.
+- [x] Emissao/validacao JWT embed (ou token opaco) com claims tenant + exp curtos conforme ADR.
+- [x] Allowlist `Origin` / `embed_parent` por tenant; rejeitar origem nao autorizada.
+- [x] Contrato postMessage renovacao documentado no README embed.
+- [x] OpenAPI; testes; ATDD `test_epic6_story61_embed_session_atdd.py`.
+- [x] Shell iframe admin-web ou app embed dedicada conforme CDA.
 
 ## Party Mode (CS) - perspetivas
 
@@ -78,6 +78,10 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 - Depende de **2.1** apenas como referencia de identidade plataforma; embed **nao** usa redirect OAuth no iframe.
 
+## Backlog (P2 ? Party CR)
+
+- **CSP** / `frame-ancestors`; **rotacao** de segredo embed; **metricas** de falhas por origem (ver README).
+
 ## Testing Requirements
 
 - ATDD: `v2/apps/api/tests/atdd/test_epic6_story61_embed_session_atdd.py`
@@ -92,11 +96,31 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ### Agent Model Used
 
-_(preencher na implementacao)_
+Cursor agent (implementacao no repositorio).
 
 ### Completion Notes List
 
+- `POST /v1/embed/session/validate` (Origin + token body); JWT HMAC + exp; segredo servidor (`OPENBSP_EMBED_JWT_SECRET`).
+- Allowlist por tenant: `GET|PUT /v1/me/embed/origins`; `POST /v1/me/embed/token` exige **`embed_origin`** na allowlist quando usado; modulo partilhado `app/embed/allowlist.py`.
+- README: risco `?token=`, `pm_target` / `parent_origin` para `postMessage`; backlog P2 seguranca.
+- `EmbedPanelPage`: `postMessage` com origem alvo configuravel.
+- OpenAPI **400** em mint; policy + testes unit `normalize_browser_origin` + integracao token expirado / mint fora da allowlist.
+
 ### File List
+
+- `v2/apps/api/alembic/versions/022_tenant_embed_origins.py`
+- `v2/apps/api/app/api/routes/embed_session.py`, `me_embed.py`
+- `v2/apps/api/app/embed/origins.py`, `allowlist.py`
+- `v2/apps/api/app/db/models.py` (TenantEmbedOrigin)
+- `v2/apps/api/app/ci_seed.py` (fixture origem exemplo)
+- `v2/apps/api/tests/atdd/test_epic6_story61_embed_session_atdd.py`
+- `v2/apps/api/tests/test_story61_embed_http.py`
+- `v2/apps/api/tests/test_embed_origins_normalize.py`
+- `v2/apps/api/tests/integration/test_story61_embed_session.py`
+- `v2/apps/api/tests/policy/test_openapi_gate.py`
+- `v2/docker-compose.yml` (env embed CI)
+- `v2/README.md` (secao Embed)
+- `v2/apps/admin-web/src/features/embed/EmbedPanelPage.tsx` (rota `/embed/panel`)
 
 ---
 
@@ -105,3 +129,5 @@ _(preencher na implementacao)_
 - 2026-04-24: **[CS]** story individual; Party Mode + Advanced Elicitation.
 - 2026-04-24: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-24: **[AT]** `test_epic6_story61_embed_session_atdd.py`.
+- 2026-04-30: **[DS]** implementacao concluida; status `review` (codigo pronto para revisao); `sprint-status.yaml` atualizado.
+- 2026-04-30: **[CR Party Mode]** mint vs allowlist, postMessage alvo, README token/query, testes normalizacao/expiracao; story **done**.

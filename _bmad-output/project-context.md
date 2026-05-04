@@ -36,6 +36,8 @@ Ficheiro enxuto com regras e padrões que **devem** ser seguidos na implementação
 - **Superfícies de autenticação (resumo CDA):** (1) consola: **OAuth 2.0 / OIDC** + preparação **SSO** *enterprise*; (2) **embed** (*iframe*): **JWT** (ou token opaco) + **validação de origem**/*allowlist* ? **sem** fluxo OAuth com *redirect* dentro do *iframe*; (3) máquinas: **API keys** e **HMAC** de webhooks na borda FastAPI.
 - **Erros JSON:** corpo mínimo com `code`, `message`, e **`request_id`** (ou *correlation id*); cabeçalho canónico quando existir política. **Idempotência:** `Idempotency-Key` em mutações, semântica documentada.
 - **Webhooks (entrada):** verificação de assinatura, deduplicação, resolução de **tenant** antes de regras de negócio (FR11?13). *Outbound notify* alinhada a `docs/modular/13-*.md` quando aplicável.
+- **Motor de fluxo (5.5):** um grafo aplicado por `(tenant, environment)` = última ativação publicada; `OPENBSP_FLOW_ENGINE_*` no README; sem `phone_number_id` no evento o motor não corre.
+- **Embed (6.1):** `POST /v1/me/embed/token` com `embed_origin` exige entrada prévia em `PUT .../origins`; validação continua a exigir `Origin` allowlisted; ver README sobre `?token=` e `pm_target` no postMessage.
 - **Segurança e limites:** TLS 1.2+; segredos em *secret manager*; **rate limit** por *tenant* com **429** e `Retry-After` documentado; degradação *upstream* (Meta) sem perda silenciosa de estado visível ao cliente.
 
 ## Front-end e UX (consola e embed)

@@ -6,6 +6,7 @@ import os
 
 import psycopg
 import pytest
+from app.atdd_fixture_ids import ATDD_INBOX_CONVERSATION_ID
 from fastapi.testclient import TestClient
 
 TENANT = "11111111-1111-4111-8111-111111111111"
@@ -34,13 +35,13 @@ def test_inbox_list_sandbox_includes_atdd_conv(client: TestClient) -> None:
     assert data["header"]["waba"] is not None
     assert data["header"]["waba"]["waba_id"] == "ci-atdd-waba"
     ids = {x["id"] for x in data["items"]}
-    assert "atdd-conv-1" in ids
+    assert ATDD_INBOX_CONVERSATION_ID in ids
 
 
 @pytest.mark.integration
 def test_inbox_thread_empty_ok(client: TestClient) -> None:
     r = client.get(
-        "/v1/me/conversations/atdd-conv-1/messages",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/messages",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "agent",
@@ -49,7 +50,7 @@ def test_inbox_thread_empty_ok(client: TestClient) -> None:
     )
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["conversation_id"] == "atdd-conv-1"
+    assert body["conversation_id"] == ATDD_INBOX_CONVERSATION_ID
     assert isinstance(body["items"], list)
 
 
@@ -117,7 +118,7 @@ def test_inbox_multiple_lines_require_phone_number_id(
         assert r2.json()["header"]["waba"]["phone_number_id"] == "ci-atdd-phone-1"
 
         r3 = client.get(
-            "/v1/me/conversations/atdd-conv-1/messages",
+            f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/messages",
             headers={
                 "X-Dev-Tenant-Id": TENANT,
                 "X-Dev-Roles": "operator",

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 
 import pytest
+from app.atdd_fixture_ids import ATDD_INBOX_CONVERSATION_ID
 from fastapi.testclient import TestClient
 
 TENANT = "11111111-1111-4111-8111-111111111111"
@@ -28,7 +29,7 @@ def test_inbox_list_includes_shared_tags(client: TestClient) -> None:
     )
     assert r.status_code == 200, r.text
     data = r.json()
-    conv = next(x for x in data["items"] if x["id"] == "atdd-conv-1")
+    conv = next(x for x in data["items"] if x["id"] == ATDD_INBOX_CONVERSATION_ID)
     assert any(t["name"] == "atdd-label" for t in conv["tags"])
 
 
@@ -49,7 +50,7 @@ def test_list_inbox_tags(client: TestClient) -> None:
 @pytest.mark.integration
 def test_patch_conversation_tags_idempotent(client: TestClient) -> None:
     r = client.patch(
-        "/v1/me/conversations/atdd-conv-1/tags",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/tags",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "operator",
@@ -59,14 +60,14 @@ def test_patch_conversation_tags_idempotent(client: TestClient) -> None:
     )
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["conversation_id"] == "atdd-conv-1"
+    assert body["conversation_id"] == ATDD_INBOX_CONVERSATION_ID
     assert {t["name"] for t in body["tags"]} == {"atdd-label"}
 
 
 @pytest.mark.integration
 def test_patch_conversation_tags_unknown_tag_422(client: TestClient) -> None:
     r = client.patch(
-        "/v1/me/conversations/atdd-conv-1/tags",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/tags",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "operator",
@@ -81,7 +82,7 @@ def test_patch_conversation_tags_unknown_tag_422(client: TestClient) -> None:
 @pytest.mark.integration
 def test_patch_conversation_tags_viewer_forbidden(client: TestClient) -> None:
     r = client.patch(
-        "/v1/me/conversations/atdd-conv-1/tags",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/tags",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "viewer",

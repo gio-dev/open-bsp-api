@@ -6,6 +6,7 @@ import os
 
 import psycopg
 import pytest
+from app.atdd_fixture_ids import ATDD_INBOX_CONVERSATION_ID
 from fastapi.testclient import TestClient
 
 TENANT = "11111111-1111-4111-8111-111111111111"
@@ -37,7 +38,7 @@ def _seed_handoff_row(dsn: str) -> None:
                   updated_at = now()
                 """,
                 (
-                    "atdd-conv-1",
+                    ATDD_INBOX_CONVERSATION_ID,
                     TENANT,
                     "Cliente pede atendimento humano (ATDD).",
                     "A transferir para um agente.",
@@ -62,7 +63,7 @@ def _reset_handoff_fixture() -> None:
 @pytest.mark.integration
 def test_get_handoff_returns_seed_context(client: TestClient) -> None:
     r = client.get(
-        "/v1/me/conversations/atdd-conv-1/handoff",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/handoff",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "viewer",
@@ -71,7 +72,7 @@ def test_get_handoff_returns_seed_context(client: TestClient) -> None:
     )
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["conversation_id"] == "atdd-conv-1"
+    assert body["conversation_id"] == ATDD_INBOX_CONVERSATION_ID
     assert body["handoff_state"] == "queued"
     assert "humano" in (body["intent_summary"] or "").lower()
     assert body["queue_id"] == "atdd-queue-default"
@@ -80,7 +81,7 @@ def test_get_handoff_returns_seed_context(client: TestClient) -> None:
 @pytest.mark.integration
 def test_patch_accept_handoff_operator(client: TestClient) -> None:
     r = client.patch(
-        "/v1/me/conversations/atdd-conv-1/handoff",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/handoff",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "operator",
@@ -98,7 +99,7 @@ def test_patch_accept_handoff_operator(client: TestClient) -> None:
 @pytest.mark.integration
 def test_patch_accept_requires_user_identity_422(client: TestClient) -> None:
     r = client.patch(
-        "/v1/me/conversations/atdd-conv-1/handoff",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/handoff",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "operator",
@@ -113,7 +114,7 @@ def test_patch_accept_requires_user_identity_422(client: TestClient) -> None:
 @pytest.mark.integration
 def test_patch_accept_idempotent_same_operator(client: TestClient) -> None:
     r1 = client.patch(
-        "/v1/me/conversations/atdd-conv-1/handoff",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/handoff",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "operator",
@@ -124,7 +125,7 @@ def test_patch_accept_idempotent_same_operator(client: TestClient) -> None:
     )
     assert r1.status_code == 200, r1.text
     r2 = client.patch(
-        "/v1/me/conversations/atdd-conv-1/handoff",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/handoff",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "operator",
@@ -149,11 +150,11 @@ def test_patch_accept_reject_when_automated_422(client: TestClient) -> None:
                     claimed_by_user_id = NULL
                 WHERE conversation_id = %s
                 """,
-                ("atdd-conv-1",),
+                (ATDD_INBOX_CONVERSATION_ID,),
             )
         conn.commit()
     r = client.patch(
-        "/v1/me/conversations/atdd-conv-1/handoff",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/handoff",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "operator",
@@ -173,11 +174,11 @@ def test_patch_accept_no_handoff_row_422(client: TestClient) -> None:
         with conn.cursor() as cur:
             cur.execute(
                 "DELETE FROM inbox_conversation_handoffs WHERE conversation_id = %s",
-                ("atdd-conv-1",),
+                (ATDD_INBOX_CONVERSATION_ID,),
             )
         conn.commit()
     r = client.patch(
-        "/v1/me/conversations/atdd-conv-1/handoff",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/handoff",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "operator",
@@ -193,7 +194,7 @@ def test_patch_accept_no_handoff_row_422(client: TestClient) -> None:
 @pytest.mark.integration
 def test_patch_queue_org_admin(client: TestClient) -> None:
     r = client.patch(
-        "/v1/me/conversations/atdd-conv-1/handoff",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/handoff",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "org_admin",
@@ -209,7 +210,7 @@ def test_patch_queue_org_admin(client: TestClient) -> None:
 @pytest.mark.integration
 def test_patch_queue_forbidden_for_operator(client: TestClient) -> None:
     r = client.patch(
-        "/v1/me/conversations/atdd-conv-1/handoff",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/handoff",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "operator",
@@ -237,7 +238,7 @@ def test_get_handoff_unknown_conversation_404(client: TestClient) -> None:
 @pytest.mark.integration
 def test_patch_accept_conflict_second_operator(client: TestClient) -> None:
     client.patch(
-        "/v1/me/conversations/atdd-conv-1/handoff",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/handoff",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "operator",
@@ -247,7 +248,7 @@ def test_patch_accept_conflict_second_operator(client: TestClient) -> None:
         json={"accept": True},
     )
     r2 = client.patch(
-        "/v1/me/conversations/atdd-conv-1/handoff",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/handoff",
         headers={
             "X-Dev-Tenant-Id": TENANT,
             "X-Dev-Roles": "operator",

@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Uuid, func, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -110,6 +110,47 @@ class WebhookVerifySecret(Base):
     )
     invalid_after: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+
+
+class TenantEmbedOrigin(Base):
+    """Origins permitidas para POST /v1/embed/session/validate (Story 6.1)."""
+
+    __tablename__ = "tenant_embed_origins"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    origin: Mapped[str] = mapped_column(String(512), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class TenantContactPreference(Base):
+    """Preferencias de disclosure / marketing por contacto (Story 6.3).
+
+    ``contact_id`` identificador da API (ex.: wa_id so digitos ou slug).
+    """
+
+    __tablename__ = "tenant_contact_preferences"
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    contact_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    marketing_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    transactional_allowed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    disclosure_copy_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
     )
 
 

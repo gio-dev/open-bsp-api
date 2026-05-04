@@ -4,6 +4,19 @@
 
 Open BSP API: multi-tenant WhatsApp Business Platform integration. **Target:** Python/FastAPI, PostgreSQL, OAuth. **Legacy (until cutover):** Deno + Supabase Edge Functions. See README.md for full details.
 
+## v2 stack: Ruff e pytest apenas no Docker
+
+Para `v2/apps/api`, **correr sempre `ruff` e `pytest` através do serviço Compose `api-ci`** (Postgres + `DATABASE_URL`/migrations alinhados ao CI). Evitar `pytest`/`ruff` directos na máquina host (falhas 503/env e versões diferentes).
+
+Na pasta **`v2/`**:
+
+```bash
+docker compose --profile ci build api-ci
+docker compose --profile ci run --rm api-ci
+```
+
+Smoke (subconjunto): ver `README.md` na raiz da pasta `v2/`. GitHub Actions: `.github/workflows/ci-v2-docker.yml`.
+
 ## Debugging production edge functions
 
 ### Querying stdout logs (console.log / console.error)

@@ -39,6 +39,17 @@ describe("ATDD Epic 4 Story 4.3 inbox handoff panel", () => {
             }),
           });
         }
+        if (url.includes("/mode")) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              conversation_id: "conv-a",
+              mode: "human_active",
+              since: "2026-01-01T00:00:00Z",
+            }),
+          });
+        }
         if (url.includes("/handoff")) {
           return Promise.resolve({
             ok: true,
@@ -92,6 +103,9 @@ describe("ATDD Epic 4 Story 4.3 inbox handoff panel", () => {
 
     fireEvent.click(await screen.findByTestId("inbox-conv-conv-a"));
     expect(await screen.findByTestId("inbox-handoff-panel")).toBeInTheDocument();
+    expect(await screen.findByTestId("inbox-conversation-mode")).toHaveTextContent(
+      "Assistencia humana",
+    );
     expect(await screen.findByTestId("inbox-handoff-state")).toHaveTextContent(
       "queued",
     );

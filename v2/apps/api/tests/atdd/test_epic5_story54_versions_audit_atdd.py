@@ -22,3 +22,16 @@ def test_story_54_flow_versions_list(client: TestClient):
     assert isinstance(data.get("items"), list)
     assert "total" in data
     assert isinstance(data["total"], int)
+
+
+@pytest.mark.atdd
+@pytest.mark.epic5_atdd
+def test_story_54_flow_versions_list_viewer_forbidden(client: TestClient):
+    r = client.get(
+        "/v1/me/flows/atdd-flow/versions",
+        headers={
+            "X-Dev-Tenant-Id": "11111111-1111-4111-8111-111111111111",
+            "X-Dev-Roles": "viewer",
+        },
+    )
+    assert r.status_code == 403, r.text

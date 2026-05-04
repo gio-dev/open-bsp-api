@@ -3,6 +3,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
 
 import LoginPage from "./features/auth/LoginPage";
+import EmbedPanelPage from "./features/embed/EmbedPanelPage";
 import TenantShell from "./features/shell/TenantShell";
 
 const OrganizationSettingsPage = lazy(
@@ -20,6 +21,9 @@ const MessageTemplatesPage = lazy(
 );
 const InboxPage = lazy(() => import("./features/inbox/InboxPage"));
 const FlowEditorPage = lazy(() => import("./features/flows/FlowEditorPage"));
+const ContactPreferencesPage = lazy(
+  () => import("./features/privacy/ContactPreferencesPage"),
+);
 
 async function logoutSession(): Promise<void> {
   const base = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -56,6 +60,12 @@ export default function App() {
           {" · "}
           <Link to="/settings/integrations">Integrations</Link>
           {" · "}
+          <Link to="/embed/panel">Embed (iframe)</Link>
+          {" · "}
+          <Link to="/privacy/contacts/atdd-contact/preferences">
+            Contact prefs (LGPD)
+          </Link>
+          {" · "}
           <Link to="/login">Login</Link>
           {sessionUi ? (
             <>
@@ -74,6 +84,7 @@ export default function App() {
         <Suspense fallback={<Spinner />}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/embed/panel" element={<EmbedPanelPage />} />
             <Route element={<TenantShell />}>
               <Route
                 path="/settings/organization"
@@ -90,6 +101,10 @@ export default function App() {
               />
               <Route path="/inbox" element={<InboxPage />} />
               <Route path="/flows/editor" element={<FlowEditorPage />} />
+              <Route
+                path="/privacy/contacts/:contactId/preferences"
+                element={<ContactPreferencesPage />}
+              />
               <Route
                 path="/channels/waba-numbers"
                 element={<WabaPhoneNumberListPage />}

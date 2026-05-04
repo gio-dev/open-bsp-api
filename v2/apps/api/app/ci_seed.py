@@ -16,12 +16,18 @@ def main() -> int:
 
     import psycopg
 
+    from app.atdd_fixture_ids import (
+        ATDD_CONTACT_PREFERENCES_ID,
+        ATDD_INBOX_CONVERSATION_ID,
+    )
+
     tenant_id = "11111111-1111-4111-8111-111111111111"
     row_id = "22222222-2222-4222-8222-222222222222"
     waba_row_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
     atdd_tag_id = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
     console_user_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
     membership_id = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+    embed_origin_id = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
 
     with psycopg.connect(dsn, autocommit=True) as conn:
         with conn.cursor() as cur:
@@ -74,6 +80,32 @@ def main() -> int:
                     "sandbox",
                 ),
             )
+            # ATDD inbox: delete by natural key if PK was legacy literal id.
+            cur.execute(
+                """
+                DELETE FROM inbox_conversation_tags ct
+                USING inbox_conversations c
+                WHERE c.id = ct.conversation_id
+                  AND c.tenant_id = %s::uuid AND c.waba_id = %s AND c.contact_wa_id = %s
+                """,
+                (tenant_id, "ci-atdd-waba", "15550009999"),
+            )
+            cur.execute(
+                """
+                DELETE FROM inbox_conversation_handoffs h
+                USING inbox_conversations c
+                WHERE c.id = h.conversation_id
+                  AND c.tenant_id = %s::uuid AND c.waba_id = %s AND c.contact_wa_id = %s
+                """,
+                (tenant_id, "ci-atdd-waba", "15550009999"),
+            )
+            cur.execute(
+                """
+                DELETE FROM inbox_conversations
+                WHERE tenant_id = %s::uuid AND waba_id = %s AND contact_wa_id = %s
+                """,
+                (tenant_id, "ci-atdd-waba", "15550009999"),
+            )
             cur.execute(
                 """
                 INSERT INTO inbox_conversations
@@ -83,7 +115,7 @@ def main() -> int:
                 ON CONFLICT ON CONSTRAINT uq_inbox_conv_tenant_waba_contact DO NOTHING
                 """,
                 (
-                    "atdd-conv-1",
+                    ATDD_INBOX_CONVERSATION_ID,
                     tenant_id,
                     "ci-atdd-waba",
                     "15550009999",
@@ -107,7 +139,29 @@ def main() -> int:
                 VALUES (%s, %s::uuid, %s::uuid)
                 ON CONFLICT (conversation_id, tag_id) DO NOTHING
                 """,
-                ("atdd-conv-1", atdd_tag_id, tenant_id),
+                (ATDD_INBOX_CONVERSATION_ID, atdd_tag_id, tenant_id),
+            )
+            cur.execute(
+                """
+                INSERT INTO tenant_embed_origins (id, tenant_id, origin)
+                VALUES (%s::uuid, %s::uuid, %s)
+                ON CONFLICT (tenant_id, origin) DO NOTHING
+                """,
+                (embed_origin_id, tenant_id, "https://partner.example.com"),
+            )
+            cur.execute(
+                """
+                INSERT INTO tenant_contact_preferences
+                  (tenant_id, contact_id, marketing_opt_in,
+                   transactional_allowed, disclosure_copy_slug)
+                VALUES (%s::uuid, %s, false, true, 'baseline-v1')
+                ON CONFLICT ON CONSTRAINT pk_tenant_contact_preferences DO UPDATE SET
+                  marketing_opt_in = EXCLUDED.marketing_opt_in,
+                  transactional_allowed = EXCLUDED.transactional_allowed,
+                  disclosure_copy_slug = EXCLUDED.disclosure_copy_slug,
+                  updated_at = now()
+                """,
+                (tenant_id, ATDD_CONTACT_PREFERENCES_ID),
             )
             cur.execute(
                 """
@@ -123,7 +177,7 @@ def main() -> int:
                   updated_at = now()
                 """,
                 (
-                    "atdd-conv-1",
+                    ATDD_INBOX_CONVERSATION_ID,
                     tenant_id,
                     "Cliente pede atendimento humano (ATDD).",
                     "A transferir para um agente.",

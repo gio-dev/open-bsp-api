@@ -1,6 +1,7 @@
 """ATDD Story 4.1 - Inbox split lista e thread (RED until DS)."""
 
 import pytest
+from app.atdd_fixture_ids import ATDD_INBOX_CONVERSATION_ID
 from fastapi.testclient import TestClient
 
 pytestmark = [pytest.mark.atdd, pytest.mark.epic4_atdd]
@@ -26,7 +27,7 @@ def test_story_41_inbox_conversations_list(client: TestClient):
 def test_story_41_inbox_conversation_thread_messages(client: TestClient):
     """4.1: thread payload when a conversation is selected."""
     r = client.get(
-        "/v1/me/conversations/atdd-conv-1/messages",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/messages",
         headers=_HDR,
         params={"environment": "sandbox"},
     )

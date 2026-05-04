@@ -1,7 +1,7 @@
 ---
 story_key: 6-3-disclosure-tratamento-opt-in-granular
 epic: epic-6
-status: ready-for-dev
+status: review
 vs_validated: true
 vs_date: 2026-04-24
 atdd_ready: true
@@ -30,10 +30,10 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ## Tasks / Subtasks
 
-- [ ] Modelo preferencias (categorias marketing, transacional, registo de versao de copy).
+- [x] Modelo preferencias (categorias marketing, transacional, registo de versao de copy).
 - [ ] Integracao fluxos 5.x para nos de consentimento quando aplicavel.
-- [ ] Admin-web: revisao copy baseline; listagem contacto + preferencias.
-- [ ] Ligacao futura Epico 9 (DSAR) documentada; ATDD `test_epic6_story63_disclosure_preferences_atdd.py`.
+- [x] Admin-web: revisao copy baseline; listagem contacto + preferencias.
+- [x] Ligacao futura Epico 9 (DSAR) documentada; ATDD `test_epic6_story63_disclosure_preferences_atdd.py`.
 
 ## Party Mode (CS) - perspetivas
 
@@ -77,10 +77,14 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 - Depende de **6.2** para narrativa continuidade canal/painel.
 - Alinhar com **9.x** para registo de consentimento formal.
+- Fluxos **5.x** com nos de consentimento explicitos ficam backlog; **`POST .../messages/send`** ja aceita **`preference_kind`** para integradores aplicarem categorias antes do editor grafico cobrir cada no.
 
 ## Testing Requirements
 
-- ATDD: `v2/apps/api/tests/atdd/test_epic6_story63_disclosure_preferences_atdd.py`
+- ATDD API (epic6): `v2/apps/api/tests/atdd/test_epic6_story63_disclosure_preferences_atdd.py`
+- Integracao: `v2/apps/api/tests/integration/test_story63_contact_preferences.py`
+- OpenAPI policy: `test_me_contacts_preferences_documents_errors`
+- Admin Vitest ATDD: `v2/apps/admin-web/src/atdd/epic6-story63-contact-preferences.atdd.test.tsx`
 
 ## References
 
@@ -90,11 +94,30 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 ### Agent Model Used
 
-_(preencher na implementacao)_
+Cursor agent.
 
 ### Completion Notes List
 
+- Tabela `tenant_contact_preferences` + RLS; seed `atdd-contact` para ATDD CI.
+- `GET|PATCH /v1/me/contacts/{contact_id}/preferences`; audit em PATCH quando ha alteracoes.
+- Envio **`preference_kind`** `marketing|transactional` com gate em `contacts/outbound_prefs.py`.
+- Pagina admin `/privacy/contacts/:contactId/preferences`; README atualizado (Epico 9 / LGPD minimal).
+
 ### File List
+
+- `v2/apps/api/alembic/versions/023_tenant_contact_preferences.py`
+- `v2/apps/api/app/db/models.py` (TenantContactPreference)
+- `v2/apps/api/app/api/routes/me_contact_preferences.py`
+- `v2/apps/api/app/contacts/outbound_prefs.py`, `contacts/__init__.py`
+- `v2/apps/api/app/api/routes/me_messages.py`
+- `v2/apps/api/app/ci_seed.py`, `app/atdd_fixture_ids.py`
+- `v2/apps/api/app/tenancy/rbac.py` (CONTACT_PREFERENCE_WRITE_ROLES)
+- `v2/apps/api/app/main.py`
+- Tests ATDD/integration/policy story63 / epic6_story63 / openapi_me_contacts
+- `v2/apps/admin-web/src/features/privacy/ContactPreferencesPage.tsx`
+- `v2/apps/admin-web/src/atdd/epic6-story63-contact-preferences.atdd.test.tsx`
+- `v2/apps/admin-web/src/App.tsx`
+- `v2/README.md`
 
 ---
 
@@ -103,3 +126,4 @@ _(preencher na implementacao)_
 - 2026-04-24: **[CS]** story individual; Party Mode + Advanced Elicitation.
 - 2026-04-24: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-24: **[AT]** `test_epic6_story63_disclosure_preferences_atdd.py`.
+- 2026-04-30: **[DS]** modelo + API + outbound gate + admin + tests; sprint `review`; integracao fluxos 5.x deixada aberta.

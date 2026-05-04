@@ -56,6 +56,17 @@ function parseGraphJson(
   }
 }
 
+function formatVersionPublishedAt(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return iso;
+  }
+  return d.toLocaleString("pt-PT", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
 export default function FlowEditorPage() {
   const apiPath = useCallback(
     (path: string) => `${import.meta.env.VITE_API_BASE_URL ?? ""}${path}`,
@@ -419,8 +430,9 @@ export default function FlowEditorPage() {
           {versionRows.map((v) => (
             <Box key={v.version_id} role="listitem">
               <Text fontSize="sm" fontFamily="mono">
-                {v.published_at} · {v.environment} · {v.definition_fingerprint_prefix}{" "}
-                · ?{String(v.version_id).slice(-8)}
+                {formatVersionPublishedAt(v.published_at)} · {v.environment} ·{" "}
+                {v.definition_fingerprint_prefix} · id ?
+                {String(v.version_id).slice(-8)}
               </Text>
             </Box>
           ))}

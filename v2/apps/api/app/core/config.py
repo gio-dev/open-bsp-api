@@ -102,6 +102,63 @@ class Settings(BaseSettings):
     outbound_sweep_batch_size: int = 50
     """Max envios por passagem do sweep (OUTBOUND_SWEEP_BATCH_SIZE)."""
 
+    flow_engine_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "OPENBSP_FLOW_ENGINE_ENABLED",
+            "flow_engine_enabled",
+        ),
+        description=(
+            "Liga o motor de fluxo apos ingresso 3.1 (Story 5.5). Desligado por "
+            "defeito; active em staging via OPENBSP_FLOW_ENGINE_ENVIRONMENTS."
+        ),
+    )
+    flow_engine_environments: str = Field(
+        default="staging",
+        validation_alias=AliasChoices(
+            "OPENBSP_FLOW_ENGINE_ENVIRONMENTS",
+            "flow_engine_environments",
+        ),
+        description=(
+            "Ambientes runtime onde o motor corre (lista separada por virgulas, ex. "
+            "`staging` ou `staging,development`). "
+            "Producao so se listada explicitamente."
+        ),
+    )
+
+    embed_jwt_secret: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "OPENBSP_EMBED_JWT_SECRET",
+            "embed_jwt_secret",
+        ),
+        description=(
+            "HMAC secreto para JWT de embed (somente servidor; NFR-SEC-01). Sem isto, "
+            "`POST /v1/embed/session/validate` responde 503."
+        ),
+    )
+    embed_token_ttl_seconds: int = Field(
+        default=900,
+        ge=60,
+        le=3600,
+        validation_alias=AliasChoices(
+            "OPENBSP_EMBED_TOKEN_TTL_SECONDS",
+            "embed_token_ttl_seconds",
+        ),
+        description="TTL por omissao ao emitir embed token (60-3600).",
+    )
+    embed_cors_origins: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "OPENBSP_EMBED_CORS_ORIGINS",
+            "embed_cors_origins",
+        ),
+        description=(
+            "Lista separada por virgulas com Origins adicionais para CORS "
+            "(iframes de parceiros chamam a API). Nao expor em documentacao publica."
+        ),
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -17,7 +17,9 @@ from app.core.config import Settings
 from app.db.models_webhook_inbound import WebhookInboundEvent
 from app.db.session import platform_session, tenant_session
 from app.inbox.sync import upsert_inbox_conversation_from_inbound
+from app.services.flow_engine import run_flow_engine_for_inbound_message
 from app.whatsapp.identity import resolve_inbound_identity
+from app.whatsapp.outbound_worker import deliver_outbound_message
 
 log = logging.getLogger(__name__)
 
@@ -323,6 +325,7 @@ async def enqueue_whatsapp_payload(
 
     enqueued = 0
     deduplicated = 0
+    outbound_deliveries: list[tuple[UUID, UUID]] = []
 
     for tid, trows in by_tenant.items():
         async with tenant_session(tid) as session:
@@ -358,8 +361,27 @@ async def enqueue_whatsapp_payload(
                             phone_number_id=r.phone_number_id,
                             message_ts=r.message_ts,
                         )
+                        msg_obj: dict[str, Any] = {}
+                        if isinstance(r.payload, dict):
+                            raw_m = r.payload.get("message")
+                            if isinstance(raw_m, dict):
+                                msg_obj = raw_m
+                        batch = await run_flow_engine_for_inbound_message(
+                            session,
+                            tenant_id=tid,
+                            request_id=request_id,
+                            waba_id=r.waba_id,
+                            source_id=r.source_id,
+                            contact_wa_id=r.contact_wa_id,
+                            phone_number_id=r.phone_number_id,
+                            message=msg_obj,
+                        )
+                        outbound_deliveries.extend(batch)
                 else:
                     deduplicated += 1
+
+    for mid, otid in outbound_deliveries:
+        await deliver_outbound_message(mid, otid)
 
     return {
         "enqueued": enqueued,

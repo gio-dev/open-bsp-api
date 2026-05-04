@@ -1,6 +1,7 @@
 """ATDD Story 4.3 - Handoff (RED until DS)."""
 
 import pytest
+from app.atdd_fixture_ids import ATDD_INBOX_CONVERSATION_ID
 from fastapi.testclient import TestClient
 
 pytestmark = [pytest.mark.atdd, pytest.mark.epic4_atdd]
@@ -14,7 +15,7 @@ _HDR = {
 @pytest.mark.atdd
 def test_story_43_get_conversation_handoff(client: TestClient):
     r = client.get(
-        "/v1/me/conversations/atdd-conv-1/handoff",
+        f"/v1/me/conversations/{ATDD_INBOX_CONVERSATION_ID}/handoff",
         headers=_HDR,
         params={"environment": "sandbox"},
     )

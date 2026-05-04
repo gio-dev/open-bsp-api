@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 from typing import Annotated, Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
+from app.contacts.outbound_prefs import (
+    gate_outbound_contact_preferences,
+    load_contact_preference_flags,
+)
 from app.core.config import get_settings
 from app.core.errors import CanonicalErrorResponse
+from app.db.models import AuditEvent
 from app.db.models_outbound import OutboundWhatsappMessage
 from app.db.models_waba import WabaPhoneNumber
 from app.db.session import tenant_session
@@ -45,6 +50,13 @@ class SendWhatsAppMessageBody(BaseModel):
     text: TextSubPayload
     environment: str = Field(default="production", max_length=32)
     phone_number_id: str | None = Field(default=None, max_length=128)
+    preference_kind: Literal["none", "marketing", "transactional"] = Field(
+        default="none",
+        description=(
+            "Story 6.3: com `marketing` ou `transactional`, o destino e wa_id "
+            "digit-only; alinha com `tenant_contact_preferences.contact_id`."
+        ),
+    )
 
     @field_validator("environment")
     @classmethod
@@ -151,6 +163,31 @@ async def send_whatsapp_message(
                     status=existing.status,
                     upstream_fault=existing.upstream_fault,
                 )
+
+        await gate_outbound_contact_preferences(
+            session,
+            ctx.tenant_id,
+            contact_key_digits=to_digits,
+            preference_kind=body.preference_kind,
+        )
+
+        if body.preference_kind in ("marketing", "transactional"):
+            mk, tk = await load_contact_preference_flags(
+                session,
+                ctx.tenant_id,
+                to_digits,
+            )
+            session.add(
+                AuditEvent(
+                    id=uuid4(),
+                    tenant_id=ctx.tenant_id,
+                    actor_user_id=ctx.actor_user_id,
+                    resource_type="whatsapp_outbound_enqueued",
+                    summary=(
+                        f"kind={body.preference_kind}:to={to_digits}:m={mk}:t={tk}"
+                    )[:1024],
+                ),
+            )
 
         waba = await _resolve_sender_waba(
             session, ctx.tenant_id, body.environment, body.phone_number_id

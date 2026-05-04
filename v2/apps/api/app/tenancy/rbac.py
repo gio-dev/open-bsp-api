@@ -26,6 +26,10 @@ FLOW_EDITOR_ROLES: frozenset[str] = frozenset({"org_admin", "operator"})
 # Publish em runtime (5.3): prod so org_admin; dev/staging admin ou operator.
 _PUBLISH_TARGETS_NONPROD: frozenset[str] = frozenset({"development", "staging"})
 
+# Historico material de publish (5.4): listagem e snapshot no GET detalhe; mesmo
+# universo que edita rascunhos (limita exposicao a viewer/finance/support).
+FLOW_PUBLISH_VERSION_READ_ROLES: frozenset[str] = FLOW_EDITOR_ROLES
+
 
 def roles_may_publish_flow(
     roles: frozenset[str],
@@ -42,3 +46,6 @@ def roles_may_publish_flow(
 
 # Etiquetas na inbox (Story 4.2): mesmo perfil que envia mensagens.
 INBOX_TAG_ROLES: frozenset[str] = MESSAGE_SEND_ROLES
+
+# Preferencias LGPD por contacto (Story 6.3): mesmo universo que edita inbox.
+CONTACT_PREFERENCE_WRITE_ROLES: frozenset[str] = MESSAGE_SEND_ROLES
