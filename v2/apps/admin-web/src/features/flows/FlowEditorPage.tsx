@@ -30,6 +30,32 @@ const DEFAULT_GRAPH = `{
   ]
 }`;
 
+/** Grafo minimo valido para Story 6.3: disclosure antes de send_text marketing. */
+const CONSENT_THEN_MARKETING_TEMPLATE = `{
+  "nodes": [
+    { "id": "t1", "kind": "trigger" },
+    {
+      "id": "p1",
+      "kind": "action",
+      "action_type": "update_preferences",
+      "marketing_opt_in": true,
+      "transactional_allowed": true,
+      "disclosure_copy_slug": "baseline-v1"
+    },
+    {
+      "id": "a1",
+      "kind": "action",
+      "action_type": "send_text",
+      "text_body": "Mensagem de marketing apos registo de preferencias",
+      "preference_kind": "marketing"
+    }
+  ],
+  "edges": [
+    { "source": "t1", "target": "p1" },
+    { "source": "p1", "target": "a1" }
+  ]
+}`;
+
 type FieldErr = { field: string; message: string };
 
 type PublishEnv = "development" | "staging" | "production";
@@ -299,6 +325,21 @@ export default function FlowEditorPage() {
           value={graphJson}
           onChange={(e) => void setGraphJson(e.target.value)}
         />
+        <Button
+          type="button"
+          size="xs"
+          variant="outline"
+          mt={2}
+          width="fit-content"
+          data-testid="flow-load-consent-marketing-template"
+          onClick={() => {
+            setGraphJson(CONSENT_THEN_MARKETING_TEMPLATE);
+            setBanner(null);
+            setFieldErrors([]);
+          }}
+        >
+          Colar modelo consentimento + marketing (6.3)
+        </Button>
       </Box>
       {fieldErrors.length > 0 ? (
         <VStack
@@ -320,6 +361,13 @@ export default function FlowEditorPage() {
         <strong>Validar</strong> so verifica o grafo. <strong>Gravar rascunho</strong>{" "}
         envia para o servidor, que valida antes de persistir; definicoes invalidas
         recebem 422 com erros por campo (igual a Validar).
+      </Text>
+      <Text fontSize="xs" color="fg.muted" maxW="xl">
+        Acoes tipicas:{" "}
+        <code>send_text</code>, <code>apply_tag</code>, <code>handoff</code>;{" "}
+        <code>update_preferences</code> (opt-in / transacional / slug de copy) e{" "}
+        <code>preference_kind</code> opcional em{" "}
+        <code>send_text</code> (none | marketing | transactional).
       </Text>
       <Heading size="md">Publicar (runtime)</Heading>
       {savedDraftId ? (

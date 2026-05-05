@@ -1,7 +1,7 @@
 ---
 story_key: 7-3-sandbox-tenant-scoped
 epic: epic-7
-status: ready-for-dev
+status: done
 vs_validated: true
 vs_date: 2026-04-24
 atdd_ready: true
@@ -27,10 +27,16 @@ Contexto completo em `epics.md`. **Foco DS:** Isolamento e tabela deliveries; RL
 
 ## Tasks / Subtasks
 
-- [ ] Modelo + Alembic com `tenant_id` e RLS onde houver dados.
-- [ ] API `/v1/...` + OpenAPI; erros canonicos (story 1.1).
-- [ ] Admin-web quando houver UI (Chakra, UX-DR).
-- [ ] pytest integracao; ATDD em `v2/apps/api/tests/atdd/test_epic7_story73_sandbox_deliveries_atdd.py`
+- [x] Modelo + Alembic com `tenant_id` e RLS onde houver dados.
+- [x] API `/v1/...` + OpenAPI; erros canonicos (story 1.1).
+- [x] Admin-web quando houver UI (Chakra, UX-DR): N/A nesta historia (somente API + persistencia).
+- [x] pytest integracao; ATDD em `v2/apps/api/tests/atdd/test_epic7_story73_sandbox_deliveries_atdd.py`
+
+## Implemented (DS 2026-05)
+
+- Migracao **`025`** `tenant_sandbox_webhook_deliveries`: RLS + grants `app_runtime`; indice `(tenant_id, created_at DESC)`.
+- **`enqueue_whatsapp_payload`**: apos aceitar ingresso Meta, uma linha por tenant com `request_id`, `status=accepted`, contagens `enqueued` / `deduplicated` / `skipped` por tenant (skipped parcelado por `tenant_id`).
+- **`GET /v1/me/sandbox/webhook-deliveries`**: `org_admin`; resposta `{ "items": [...] }` MVP para reconciliacao basica (limit/offset opcionais).
 
 ## Party Mode (CS)
 
@@ -69,7 +75,16 @@ Contexto completo em `epics.md`. **Foco DS:** Isolamento e tabela deliveries; RL
 
 ## Testing Requirements
 
-- `v2/apps/api/tests/atdd/test_epic7_story73_sandbox_deliveries_atdd.py`
+- ATDD: `v2/apps/api/tests/atdd/test_epic7_story73_sandbox_deliveries_atdd.py` (`epic7_atdd`).
+- Integracao (RLS + 403): `v2/apps/api/tests/integration/test_story73_sandbox_webhook_deliveries.py`.
+- Policy: `tests/policy/test_openapi_gate.py`.
+
+## Dev Agent Record (pos-CR Party Mode)
+
+- Pydantic `extra=forbid` em `SandboxWebhookDeliveryItem` / `SandboxWebhookDeliveriesResponse`.
+- `info.description` + tag OpenAPI `sandbox-webhooks` (descoberta integrador).
+- ATDD: OpenAPI path, tag, formato item, `403` para `operator`.
+- Integracao: duas linhas em tenants distintos; lista nao cruza `request_id`.
 
 ## References
 
@@ -80,4 +95,6 @@ Contexto completo em `epics.md`. **Foco DS:** Isolamento e tabela deliveries; RL
 
 ## Change Log
 
+- 2026-05-05: **[DS]** migracao 025, modelo ORM, registo na ingestao, lista GET, gate OpenAPI, ATDD `epic7_atdd`.
 - 2026-04-24: **[CS+VS+AT]** materializado no fluxo por story (epicos 7-10 / F2 / F3).
+- 2026-05-07: **CR Party Mode** fechado: RLS integration test, RBAC ATDD, schema fechado, docs OpenAPI; **done**.

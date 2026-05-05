@@ -1,7 +1,7 @@
 ---
 story_key: 6-3-disclosure-tratamento-opt-in-granular
 epic: epic-6
-status: review
+status: done
 vs_validated: true
 vs_date: 2026-04-24
 atdd_ready: true
@@ -31,7 +31,7 @@ code_location: v2/apps/api, v2/apps/admin-web
 ## Tasks / Subtasks
 
 - [x] Modelo preferencias (categorias marketing, transacional, registo de versao de copy).
-- [ ] Integracao fluxos 5.x para nos de consentimento quando aplicavel.
+- [x] Integracao fluxos 5.x para nos de consentimento quando aplicavel.
 - [x] Admin-web: revisao copy baseline; listagem contacto + preferencias.
 - [x] Ligacao futura Epico 9 (DSAR) documentada; ATDD `test_epic6_story63_disclosure_preferences_atdd.py`.
 
@@ -77,7 +77,7 @@ code_location: v2/apps/api, v2/apps/admin-web
 
 - Depende de **6.2** para narrativa continuidade canal/painel.
 - Alinhar com **9.x** para registo de consentimento formal.
-- Fluxos **5.x** com nos de consentimento explicitos ficam backlog; **`POST .../messages/send`** ja aceita **`preference_kind`** para integradores aplicarem categorias antes do editor grafico cobrir cada no.
+- Fluxos **5.x**: acao **`update_preferences`** (validacao JSON + motor) grava **`tenant_contact_preferences`** e opcional **`preference_kind`** em **`send_text`**; **`POST .../messages/send`** mantem **`preference_kind`** para integradores.
 
 ## Testing Requirements
 
@@ -98,14 +98,19 @@ Cursor agent.
 
 ### Completion Notes List
 
-- Tabela `tenant_contact_preferences` + RLS; seed `atdd-contact` para ATDD CI.
-- `GET|PATCH /v1/me/contacts/{contact_id}/preferences`; audit em PATCH quando ha alteracoes.
-- Envio **`preference_kind`** `marketing|transactional` com gate em `contacts/outbound_prefs.py`.
-- Pagina admin `/privacy/contacts/:contactId/preferences`; README atualizado (Epico 9 / LGPD minimal).
+- Tabela `tenant_contact_preferences` + RLS; seed CI contact **15550009999** (wa_id alinhado inbox ATDD).
+- Migracao **024**: remove indice redundante; coluna **`marketing_consent_recorded_at`** (DSAR minimo).
+- Fluxos 5.x: validacao **6.3** ? todo caminho ate `send_text` com `preference_kind=marketing` passa por `update_preferences`; sandbox com notas em trace; motor com audit em diff de prefs e skip de recipient invalido; admin: botao modelo JSON consentimento+marketing.
+- `GET|PATCH`: `contact_id` = wa_id E.164 normalizado; audit com **antes/depois**; recusa JSON `null` explicito; **`CONTACT_PREFERENCE_WRITE_ROLES`** = org_admin/operator (sem agent).
+- Gate outbound: uma leitura por request; tipagem `AsyncSession`.
+- CORS: rejeita `*` em origens com credentials.
+- Admin: loading spinner; merge de headers **Headers** + PATCH; copy sem aconselhamento juridico.
+- Testes: `test_outbound_prefs.py`, integracao cruzada tenant, agent 403, null/slug/espacos.
 
 ### File List
 
 - `v2/apps/api/alembic/versions/023_tenant_contact_preferences.py`
+- `v2/apps/api/alembic/versions/024_contact_prefs_tune.py`
 - `v2/apps/api/app/db/models.py` (TenantContactPreference)
 - `v2/apps/api/app/api/routes/me_contact_preferences.py`
 - `v2/apps/api/app/contacts/outbound_prefs.py`, `contacts/__init__.py`
@@ -113,8 +118,10 @@ Cursor agent.
 - `v2/apps/api/app/ci_seed.py`, `app/atdd_fixture_ids.py`
 - `v2/apps/api/app/tenancy/rbac.py` (CONTACT_PREFERENCE_WRITE_ROLES)
 - `v2/apps/api/app/main.py`
-- Tests ATDD/integration/policy story63 / epic6_story63 / openapi_me_contacts
-- `v2/apps/admin-web/src/features/privacy/ContactPreferencesPage.tsx`
+- Tests ATDD/integration/policy story63 / epic6_story63 / openapi_me_contacts / **test_outbound_prefs**
+- `v2/apps/api/app/services/flow_validation.py`, `flow_engine.py`, `flow_sandbox.py`, `app/contacts/outbound_prefs.py` (doc)
+- `v2/apps/api/tests/test_flow_validation.py`, `v2/apps/api/tests/integration/test_story55_flow_engine.py`
+- `v2/apps/admin-web/src/features/flows/FlowEditorPage.tsx`
 - `v2/apps/admin-web/src/atdd/epic6-story63-contact-preferences.atdd.test.tsx`
 - `v2/apps/admin-web/src/App.tsx`
 - `v2/README.md`
@@ -127,3 +134,5 @@ Cursor agent.
 - 2026-04-24: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-24: **[AT]** `test_epic6_story63_disclosure_preferences_atdd.py`.
 - 2026-04-30: **[DS]** modelo + API + outbound gate + admin + tests; sprint `review`; integracao fluxos 5.x deixada aberta.
+- 2026-05-05: **[DS]** remediacao CR Party Mode: wa_id unico, RBAC, audit before/after, consent timestamp, CORS, UI, testes; migracao 024.
+- 2026-05-05: **[DS]** integracao 5.x fechada: regra de caminho em `flow_validation`, audit/trace em motor e sandbox, testes de diamante e grafo invalido, modelo no Flow Editor, story **done**.

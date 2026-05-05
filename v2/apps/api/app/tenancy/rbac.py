@@ -47,5 +47,5 @@ def roles_may_publish_flow(
 # Etiquetas na inbox (Story 4.2): mesmo perfil que envia mensagens.
 INBOX_TAG_ROLES: frozenset[str] = MESSAGE_SEND_ROLES
 
-# Preferencias LGPD por contacto (Story 6.3): mesmo universo que edita inbox.
-CONTACT_PREFERENCE_WRITE_ROLES: frozenset[str] = MESSAGE_SEND_ROLES
+# Preferencias LGPD por contacto (Story 6.3): operador/admin; agente nao grava PII.
+CONTACT_PREFERENCE_WRITE_ROLES: frozenset[str] = frozenset({"org_admin", "operator"})

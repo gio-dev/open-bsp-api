@@ -1,7 +1,7 @@
 ---
 story_key: 6-4-acessibilidade-embed
 epic: epic-6
-status: ready-for-dev
+status: done
 vs_validated: true
 vs_date: 2026-04-24
 atdd_ready: true
@@ -30,10 +30,10 @@ code_location: v2/apps/admin-web
 
 ## Tasks / Subtasks
 
-- [ ] Auditar embed (Chakra/theme, foco, ARIA, live regions para mensagens).
-- [ ] Corrigir blockers criticos nas jornadas prioritarias definidas com UX/legal.
-- [ ] Automacao: testes a11y smoke no admin-web/embed package se aplicavel.
-- [ ] ATDD API opcional: `test_epic6_story64_embed_a11y_atdd.py` (200 ou 404 ate endpoint existir).
+- [x] Auditar embed (Chakra/theme, foco, ARIA, live regions para mensagens).
+- [x] Corrigir blockers criticos nas jornadas prioritarias definidas com UX/legal.
+- [x] Automacao: testes a11y smoke no admin-web/embed package se aplicavel.
+- [x] ATDD API opcional: `test_epic6_story64_embed_a11y_atdd.py` (GET 200 + metadados).
 
 ## Party Mode (CS) - perspetivas
 
@@ -91,11 +91,28 @@ code_location: v2/apps/admin-web
 
 ### Agent Model Used
 
-_(preencher na implementacao)_
+Cursor agent (composer).
 
 ### Completion Notes List
 
+- Jornadas MVP: `need_token`, `loading` (`role=status`, `aria-busy`), `refresh`, `error` (`role=alert`, foco), `ok` (glossario FR30).
+- `/embed/panel` sem chrome da consola (tab apenas no iframe).
+- Skip link `#embed-main-content`; main com `tabIndex=-1` e anel `:focus-visible`.
+- Vitest + **jest-axe** (todas as fases MVP); `color-contrast` off em JSDOM; checklist browser em `_bmad-output/implementation-artifacts/6-4-embed-a11y-evidence-checklist.md`.
+- Copy loading: "Validating embed token." (`aria-hidden` mantém SR no `aria-label` do spinner).
+- GET `/v1/me/embed/a11y-status`: metadados CI (Disclaimer: sem valor legal).
+
 ### File List
+
+- `v2/apps/admin-web/src/features/embed/EmbedPanelPage.tsx`
+- `v2/apps/admin-web/src/App.tsx`
+- `v2/apps/admin-web/src/setupTests.ts`
+- `v2/apps/admin-web/src/atdd/epic6-story64-embed-a11y.atdd.test.tsx`
+- `v2/apps/admin-web/package.json`, `package-lock.json`
+- `v2/apps/api/app/api/routes/me_embed.py`
+- `v2/apps/api/tests/atdd/test_epic6_story64_embed_a11y_atdd.py`
+- `v2/apps/api/tests/policy/test_openapi_gate.py`
+- `_bmad-output/implementation-artifacts/6-4-embed-a11y-evidence-checklist.md`
 
 ---
 
@@ -104,3 +121,5 @@ _(preencher na implementacao)_
 - 2026-04-24: **[CS]** story individual; Party Mode + Advanced Elicitation.
 - 2026-04-24: **[VS]** validada; `atdd_ready: true`.
 - 2026-04-24: **[AT]** `test_epic6_story64_embed_a11y_atdd.py`.
+- 2026-05-05: **[DS]** embed a11y shell, jest-axe smoke, `GET /me/embed/a11y-status`, rota embed isolada.
+- 2026-05-06: **[DS]** CR Party Mode: jest-axe em todas as fases; `axe-core` + `jest-axe` no package; checklist AC2; metadados API alinhados; copy loading; story **done**.

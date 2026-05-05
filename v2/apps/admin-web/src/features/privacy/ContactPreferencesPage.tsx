@@ -3,6 +3,7 @@ import {
   Checkbox,
   Heading,
   Input,
+  Spinner,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -16,6 +17,7 @@ type PrefsPayload = {
   marketing_opt_in: boolean;
   transactional_allowed: boolean;
   disclosure_copy_slug: string;
+  marketing_consent_recorded_at?: string | null;
   updated_at: string | null;
 };
 
@@ -30,6 +32,38 @@ async function readErrorMessage(r: Response): Promise<string> {
   return t.slice(0, 400) || r.statusText;
 }
 
+/** Junta headers para fetch JSON (HeadersInit plano ou instancia Headers). */
+function jsonRequestHeaders(init: ReturnType<typeof apiFetchInit>): Record<string, string> {
+  const h = init.headers;
+  const base: Record<string, string> =
+    h instanceof Headers
+      ? Object.fromEntries(h.entries())
+      : { ...(h as Record<string, string>) };
+  return {
+    ...base,
+    "Content-Type": "application/json",
+  };
+}
+
+function previewSummary(d: PrefsPayload): string {
+  if (!d.marketing_opt_in && d.transactional_allowed) {
+    return (
+      "O contacto deixa de receber campanhas promocionais; continua a receber " +
+      "mensagens transacionais (confirmacoes, codigos, alertas)."
+    );
+  }
+  if (d.marketing_opt_in && d.transactional_allowed) {
+    return "O contacto pode receber promocoes e mensagens transacionais.";
+  }
+  if (!d.transactional_allowed) {
+    return (
+      "Transacional desligado: envios com preference_kind transactional serao bloqueados " +
+      "na API. Confirme internamente se esta operacao e adequada antes de gravar."
+    );
+  }
+  return "Revise as combinacoes antes de gravar.";
+}
+
 /** Story 6.3: preferencias LGPD por contacto; microcopy separa marketing vs transacional (UX-DR4). */
 export default function ContactPreferencesPage() {
   const { contactId = "" } = useParams<{ contactId: string }>();
@@ -37,10 +71,12 @@ export default function ContactPreferencesPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [slugInput, setSlugInput] = useState("");
 
   const load = useCallback(async () => {
     setLoadError(null);
+    setLoading(true);
     const base = import.meta.env.VITE_API_BASE_URL ?? "";
     try {
       const r = await fetch(
@@ -55,6 +91,8 @@ export default function ContactPreferencesPage() {
       setSlugInput(body.disclosure_copy_slug);
     } catch (e) {
       setLoadError((e as Error).message);
+    } finally {
+      setLoading(false);
     }
   }, [contactId]);
 
@@ -68,20 +106,13 @@ export default function ContactPreferencesPage() {
     setSaveError(null);
     setSaving(true);
     const init = apiFetchInit();
-    const hdr =
-      typeof init.headers === "object" && !(init.headers instanceof Headers)
-        ? ({ ...(init.headers as Record<string, string>) })
-        : ({} as Record<string, string>);
     try {
       const r = await fetch(
         `${base}/v1/me/contacts/${encodeURIComponent(contactId)}/preferences`,
         {
           ...init,
           method: "PATCH",
-          headers: {
-            ...hdr,
-            "Content-Type": "application/json",
-          },
+          headers: jsonRequestHeaders(init),
           body: JSON.stringify({
             marketing_opt_in: data.marketing_opt_in,
             transactional_allowed: data.transactional_allowed,
@@ -102,16 +133,7 @@ export default function ContactPreferencesPage() {
     }
   };
 
-  const previewEffect =
-    data == null
-      ? ""
-      : !data.marketing_opt_in && data.transactional_allowed
-        ? "O contacto deixa de receber campanhas promocionais; continua a receber mensagens transacionais (confirmacoes, codigos, alertas)."
-        : data.marketing_opt_in && data.transactional_allowed
-          ? "O contacto pode receber promocoes e mensagens transacionais."
-          : !data.transactional_allowed
-            ? "Transacional desligado: envios com preference_kind transactional serao bloqueados na API. Use apenas com base legal clara."
-            : "Revise as combinacoes antes de gravar.";
+  const previewEffect = data == null ? "" : previewSummary(data);
 
   return (
     <VStack gap={4} align="stretch" data-testid="contact-preferences-root">
@@ -122,6 +144,9 @@ export default function ContactPreferencesPage() {
         Marketing e transacional sao categorias distintas. Os requisitos legais ficam por
         conta do tenant; esta pagina regista o estado tecnico usado pelo gate de envio.
       </Text>
+      {loading ? (
+        <Spinner data-testid="contact-preferences-loading" />
+      ) : null}
       {loadError ? (
         <Text color="red.fg" role="alert" data-testid="contact-preferences-load-error">
           {loadError}

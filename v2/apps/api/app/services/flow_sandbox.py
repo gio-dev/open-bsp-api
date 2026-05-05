@@ -88,8 +88,19 @@ def simulate_sandbox_run(
                 f"sandbox: node {cur} (condition): default branch stub",
             )
         elif kind == "action":
+            ax = str(by_id[cur].get("action_type") or "?")
+            detail = ""
+            if ax == "update_preferences":
+                detail = "; runtime gravaria tenant_contact_preferences (Story 6.3)"
+            elif ax == "send_text":
+                raw_pk = by_id[cur].get("preference_kind")
+                pk = str(raw_pk or "").strip() or "transactional"
+                detail = (
+                    f"; runtime send_text preference_kind={pk!r} (gate se marketing/tx)"
+                )
             trace.append(
-                f"sandbox: node {cur} (action): local handle (no outbound enqueue)",
+                f"sandbox: node {cur} (action/{ax}){detail}: "
+                "local handle (no outbound enqueue)",
             )
         else:
             trace.append(f"sandbox: node {cur} ({kind}): noop stub")

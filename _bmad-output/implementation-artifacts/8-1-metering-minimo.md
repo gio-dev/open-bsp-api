@@ -1,7 +1,7 @@
 ---
 story_key: 8-1-metering-minimo
 epic: epic-8
-status: ready-for-dev
+status: done
 vs_validated: true
 vs_date: 2026-04-24
 atdd_ready: true
@@ -27,10 +27,16 @@ Contexto completo em `epics.md`. **Foco DS:** Fair use e billing preparacao.
 
 ## Tasks / Subtasks
 
-- [ ] Modelo + Alembic com `tenant_id` e RLS onde houver dados.
-- [ ] API `/v1/...` + OpenAPI; erros canonicos (story 1.1).
-- [ ] Admin-web quando houver UI (Chakra, UX-DR).
-- [ ] pytest integracao; ATDD em `v2/apps/api/tests/atdd/test_epic8_story81_metering_atdd.py`
+- [x] Modelo + Alembic com `tenant_id` e RLS onde houver dados.
+- [x] API `/v1/...` + OpenAPI; erros canonicos (story 1.1).
+- [x] Admin-web quando houver UI (Chakra, UX-DR): N/A (API + persistencia).
+- [x] pytest integracao; ATDD em `v2/apps/api/tests/atdd/test_epic8_story81_metering_atdd.py`
+
+## Implemented (DS 2026-05)
+
+- Migracao **026** `tenant_metering_daily`; RLS + `app_runtime`; upsert concorrente via SQL.
+- Metricas MVP: `inbound_messages` (primeiro enqueue de mensagem Meta), `outbound_messages_accepted` (Graph aceite na fila).
+- `GET /v1/me/usage/summary` (org_admin); query `since`/`until` (UTC date); janela predefinida 30 dias; max 366 dias.
 
 ## Party Mode (CS)
 
@@ -69,7 +75,16 @@ Contexto completo em `epics.md`. **Foco DS:** Fair use e billing preparacao.
 
 ## Testing Requirements
 
-- `v2/apps/api/tests/atdd/test_epic8_story81_metering_atdd.py`
+- ATDD: `v2/apps/api/tests/atdd/test_epic8_story81_metering_atdd.py` (`epic8_atdd`).
+- Integracao (RLS + 403): `v2/apps/api/tests/integration/test_story81_usage_metering.py`.
+- Policy: `v2/apps/api/tests/policy/test_openapi_gate.py` (incl. `usage/summary` em `info.description`).
+
+## Dev Agent Record (pos-CR Party Mode)
+
+- Resposta JSON com schema fechado (`ConfigDict(extra="forbid")` em `UsageMetricTotal` / `UsageSummaryResponse`).
+- `info.description` global referencia `GET /v1/me/usage/summary` (FR41); tag OpenAPI `usage` verificada no ATDD.
+- ATDD reforcado: chaves do corpo, metricas conhecidas, path OpenAPI, `403` para `operator`, `400` para intervalo invalido.
+- Integracao: agregados nao cruzam tenant; `operator` nao le resumo.
 
 ## References
 
@@ -80,4 +95,6 @@ Contexto completo em `epics.md`. **Foco DS:** Fair use e billing preparacao.
 
 ## Change Log
 
+- 2026-05-08: **CR Party Mode** fechado: ATDD + integracao RLS/RBAC, schema fechado, gate OpenAPI `usage/summary`; **done**.
+- 2026-05-06: **[DS]** migracao 026, incrementos ingestao outbound, `GET .../usage/summary`, gate OpenAPI, `epic8_atdd`.
 - 2026-04-24: **[CS+VS+AT]** materializado no fluxo por story (epicos 7-10 / F2 / F3).

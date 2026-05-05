@@ -150,6 +150,144 @@ def test_coerce_rejects_bad_node_kind() -> None:
     assert graph is None and errs
 
 
+def test_rejects_marketing_send_without_update_preferences_on_path() -> None:
+    graph = FlowGraphPayload.model_validate(
+        {
+            "nodes": [
+                {"id": "t1", "kind": "trigger"},
+                {
+                    "id": "a1",
+                    "kind": "action",
+                    "action_type": "send_text",
+                    "text_body": "promo",
+                    "preference_kind": "marketing",
+                },
+            ],
+            "edges": [{"source": "t1", "target": "a1"}],
+        }
+    )
+    errs = validate_flow_structure(graph)
+    assert any("update_preferences" in e["message"] for e in errs)
+
+
+def test_rejects_diamond_bypassing_prefs_before_marketing() -> None:
+    graph = FlowGraphPayload.model_validate(
+        {
+            "nodes": [
+                {"id": "t1", "kind": "trigger"},
+                {
+                    "id": "p1",
+                    "kind": "action",
+                    "action_type": "update_preferences",
+                    "marketing_opt_in": True,
+                    "disclosure_copy_slug": "x",
+                },
+                {"id": "b1", "kind": "condition"},
+                {
+                    "id": "a1",
+                    "kind": "action",
+                    "action_type": "send_text",
+                    "text_body": "m",
+                    "preference_kind": "marketing",
+                },
+            ],
+            "edges": [
+                {"source": "t1", "target": "p1"},
+                {"source": "t1", "target": "b1"},
+                {"source": "p1", "target": "a1"},
+                {"source": "b1", "target": "a1"},
+            ],
+        }
+    )
+    errs = validate_flow_structure(graph)
+    assert any("6.3" in e["message"] for e in errs)
+
+
+def test_valid_flow_with_consent_then_marketing_send_text() -> None:
+    graph = FlowGraphPayload.model_validate(
+        {
+            "nodes": [
+                {"id": "t1", "kind": "trigger"},
+                {
+                    "id": "p1",
+                    "kind": "action",
+                    "action_type": "update_preferences",
+                    "marketing_opt_in": True,
+                    "disclosure_copy_slug": "v-flow",
+                },
+                {
+                    "id": "a1",
+                    "kind": "action",
+                    "action_type": "send_text",
+                    "text_body": "hello",
+                    "preference_kind": "marketing",
+                },
+            ],
+            "edges": [
+                {"source": "t1", "target": "p1"},
+                {"source": "p1", "target": "a1"},
+            ],
+        }
+    )
+    assert validate_flow_structure(graph) == []
+
+
+def test_update_preferences_requires_at_least_one_field() -> None:
+    graph = FlowGraphPayload.model_validate(
+        {
+            "nodes": [
+                {"id": "t1", "kind": "trigger"},
+                {
+                    "id": "p1",
+                    "kind": "action",
+                    "action_type": "update_preferences",
+                },
+            ],
+            "edges": [{"source": "t1", "target": "p1"}],
+        }
+    )
+    errs = validate_flow_structure(graph)
+    assert any("update_preferences" in e["message"] for e in errs)
+
+
+def test_coerce_rejects_preference_fields_on_send_text_node() -> None:
+    _, errs = coerce_flow_definition(
+        {
+            "nodes": [
+                {"id": "t1", "kind": "trigger"},
+                {
+                    "id": "a1",
+                    "kind": "action",
+                    "action_type": "send_text",
+                    "text_body": "x",
+                    "marketing_opt_in": True,
+                },
+            ],
+            "edges": [{"source": "t1", "target": "a1"}],
+        },
+    )
+    assert errs
+
+
+def test_coerce_rejects_preference_kind_on_update_preferences() -> None:
+    _, errs = coerce_flow_definition(
+        {
+            "nodes": [
+                {"id": "t1", "kind": "trigger"},
+                {
+                    "id": "p1",
+                    "kind": "action",
+                    "action_type": "update_preferences",
+                    "marketing_opt_in": True,
+                    "preference_kind": "marketing",
+                },
+            ],
+            "edges": [{"source": "t1", "target": "p1"}],
+        },
+    )
+    assert errs
+
+
 def test_structure_rejects_missing_edge_target_node() -> None:
     graph = FlowGraphPayload.model_validate(
         {

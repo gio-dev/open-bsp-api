@@ -1,4 +1,4 @@
-"""Envio de mensagens WhatsApp (saida) ? Story 3.2."""
+"""Envio de mensagens WhatsApp (saida) - Story 3.2."""
 
 from __future__ import annotations
 
@@ -10,10 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from app.contacts.outbound_prefs import (
-    gate_outbound_contact_preferences,
-    load_contact_preference_flags,
-)
+from app.contacts.outbound_prefs import gate_outbound_contact_preferences
 from app.core.config import get_settings
 from app.core.errors import CanonicalErrorResponse
 from app.db.models import AuditEvent
@@ -30,13 +27,32 @@ _ENVIRONMENTS = frozenset(
     {"development", "staging", "production", "sandbox"},
 )
 
+# Story 7.1 / FR40: Retry-After on rate-limit or transient unavailability responses.
+_RETRY_AFTER_HEADER_SCHEMA = {
+    "Retry-After": {
+        "description": (
+            "Seconds to wait before retry (HTTP Retry-After semantics; RFC 7231)."
+        ),
+        "schema": {"type": "integer", "minimum": 1},
+    }
+}
+
 _MSG_RESPONSES = {
     401: {"model": CanonicalErrorResponse},
     403: {"model": CanonicalErrorResponse},
     404: {"model": CanonicalErrorResponse},
     409: {"model": CanonicalErrorResponse},
     422: {"model": CanonicalErrorResponse},
-    503: {"model": CanonicalErrorResponse},
+    429: {
+        "description": ("Request rate-limited or throttled; retry after Retry-After."),
+        "model": CanonicalErrorResponse,
+        "headers": _RETRY_AFTER_HEADER_SCHEMA,
+    },
+    503: {
+        "description": "Service unavailable; retry after Retry-After.",
+        "model": CanonicalErrorResponse,
+        "headers": _RETRY_AFTER_HEADER_SCHEMA,
+    },
 }
 
 
@@ -53,8 +69,9 @@ class SendWhatsAppMessageBody(BaseModel):
     preference_kind: Literal["none", "marketing", "transactional"] = Field(
         default="none",
         description=(
-            "Story 6.3: com `marketing` ou `transactional`, o destino e wa_id "
-            "digit-only; alinha com `tenant_contact_preferences.contact_id`."
+            "Story 6.3 / FR33: default `none` **nao** aplica gate de preferencias "
+            "(compat integradores legados). Use `marketing` ou `transactional` para "
+            "alinhar com `tenant_contact_preferences` pelo destino normalizado."
         ),
     )
 
@@ -128,12 +145,30 @@ async def _resolve_sender_waba(
     response_model=MessageSendAccepted,
     responses=_MSG_RESPONSES,
     summary="Enviar mensagem WhatsApp (fila + worker)",
+    openapi_extra={
+        "description": (
+            "**Idempotency (FR40):** optional `Idempotency-Key` header "
+            "(max 128 chars). Same key and tenant replays return **202** with the "
+            "same accepted send (current queue body) or **409** on rare concurrent "
+            "conflict for the same key."
+        ),
+    },
 )
 async def send_whatsapp_message(
     background_tasks: BackgroundTasks,
     body: SendWhatsAppMessageBody,
     ctx: Annotated[TenantUserContext, Depends(console_message_send_context)],
-    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+    idempotency_key: Annotated[
+        str | None,
+        Header(
+            alias="Idempotency-Key",
+            description=(
+                "Optional per-tenant deduplication key for sends (Story 7.1 / "
+                "NFR-INT-01). Omit for distinct sends."
+            ),
+            max_length=128,
+        ),
+    ] = None,
 ) -> MessageSendAccepted:
     settings = get_settings()
     if not settings.database_url:
@@ -164,19 +199,15 @@ async def send_whatsapp_message(
                     upstream_fault=existing.upstream_fault,
                 )
 
-        await gate_outbound_contact_preferences(
+        flags = await gate_outbound_contact_preferences(
             session,
             ctx.tenant_id,
             contact_key_digits=to_digits,
             preference_kind=body.preference_kind,
         )
 
-        if body.preference_kind in ("marketing", "transactional"):
-            mk, tk = await load_contact_preference_flags(
-                session,
-                ctx.tenant_id,
-                to_digits,
-            )
+        if flags is not None:
+            mk, tk = flags
             session.add(
                 AuditEvent(
                     id=uuid4(),

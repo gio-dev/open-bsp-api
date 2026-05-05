@@ -20,12 +20,39 @@ def test_openapi_info_and_public_paths(client):
     info = spec.get("info") or {}
     assert info.get("title"), "info.title is required"
     assert info.get("version") is not None, "info.version is required"
+    info_desc = info.get("description") or ""
+    assert "/v1" in info_desc, "info.description must document stable /v1 prefix (FR36)"
+    assert "policy/deprecation" in info_desc.lower(), (
+        "info.description must reference GET /v1/policy/deprecation (FR37)"
+    )
+    assert "webhook-deliveries" in info_desc.lower(), (
+        "info.description must reference GET .../sandbox/webhook-deliveries (FR38/FR39)"
+    )
+    assert "usage/summary" in info_desc.lower(), (
+        "info.description must reference GET .../me/usage/summary (FR41)"
+    )
 
     paths = spec.get("paths") or {}
     assert "/v1/health" in paths, "public health path must be documented"
     assert "/v1/ready" in paths, "public ready path must be documented"
     assert "get" in paths["/v1/health"], "/v1/health must declare GET"
     assert "get" in paths["/v1/ready"], "/v1/ready must declare GET"
+    assert "/v1/policy/deprecation" in paths, "public deprecation policy GET (7.2)"
+    assert "get" in paths["/v1/policy/deprecation"], (
+        "/v1/policy/deprecation must declare GET"
+    )
+
+
+@pytest.mark.policy
+def test_policy_deprecation_body_aligns_openapi_version(client):
+    spec = client.get("/openapi.json").json()
+    r = client.get("/v1/policy/deprecation")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["api_semantic_version"] == spec["info"]["version"], (
+        "policy JSON must mirror OpenAPI info.version (CHANGELOG alignment)"
+    )
+    assert body["rest_stable_prefix"] == "/v1"
 
 
 @pytest.mark.policy
@@ -163,11 +190,29 @@ def test_me_messages_send_post_documents_errors(client):
     spec = r.json()
     op = spec.get("paths", {}).get("/v1/me/messages/send", {}).get("post") or {}
     responses = op.get("responses") or {}
-    for code in ("401", "403", "404", "409", "422", "503"):
+    param_names = {p.get("name") for p in op.get("parameters") or []}
+    assert "Idempotency-Key" in param_names, (
+        "POST /v1/me/messages/send must document Idempotency-Key header (7.1)"
+    )
+    assert "202" in responses, (
+        "POST /v1/me/messages/send must document HTTP 202 (accepted queued)"
+    )
+    for code in ("401", "403", "404", "409", "422", "429", "503"):
         assert code in responses, f"POST /v1/me/messages/send must document HTTP {code}"
         content = responses[code].get("content") or {}
         schema = (content.get("application/json") or {}).get("schema") or {}
         _assert_error_envelope_fields(spec, schema)
+
+    retry = (responses["429"].get("headers") or {}).get("Retry-After") or {}
+    retry_schema = retry.get("schema") or {}
+    assert retry_schema.get("type") == "integer", (
+        "429 must document Retry-After header schema"
+    )
+    retry503 = (responses["503"].get("headers") or {}).get("Retry-After") or {}
+    schema503 = retry503.get("schema") or {}
+    assert schema503.get("type") == "integer", (
+        "503 must document Retry-After header schema"
+    )
 
 
 @pytest.mark.policy
@@ -605,6 +650,20 @@ def test_me_embed_token_post_documents_errors(client):
 
 
 @pytest.mark.policy
+def test_me_embed_a11y_status_get_documents_errors(client):
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    op = spec.get("paths", {}).get("/v1/me/embed/a11y-status", {}).get("get") or {}
+    res = op.get("responses") or {}
+    for code in ("401", "503"):
+        assert code in res, "GET /v1/me/embed/a11y-status must document HTTP " + code
+        content = res[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        _assert_error_envelope_fields(spec, schema)
+
+
+@pytest.mark.policy
 def test_me_flow_publish_post_documents_errors(client):
     r = client.get("/openapi.json")
     assert r.status_code == 200
@@ -649,6 +708,65 @@ def test_me_flow_sandbox_run_post_documents_errors(client):
         assert code in res, (
             f"POST /v1/me/flows/{{flow_id}}/sandbox-run must document HTTP {code}"
         )
+        content = res[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        if code == "422":
+            props422: dict = {}
+            if "$ref" in schema:
+                key422 = schema["$ref"].rsplit("/", 1)[-1]
+                schemas = spec.get("components", {}).get("schemas", {})
+                ref422 = schemas.get(key422) or {}
+                props422 = ref422.get("properties") or {}
+            elif schema.get("type") == "object":
+                props422 = schema.get("properties") or {}
+            for key in ("code", "message", "request_id", "errors"):
+                assert key in props422, f"422 must include {key}"
+        else:
+            _assert_error_envelope_fields(spec, schema)
+
+
+@pytest.mark.policy
+def test_me_sandbox_webhook_deliveries_get_documents_errors(client):
+    """Story 7.3: webhook delivery history list documents canonical HTTP errors."""
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    op = (
+        spec.get("paths", {}).get("/v1/me/sandbox/webhook-deliveries", {}).get("get")
+        or {}
+    )
+    res = op.get("responses") or {}
+    for code in ("401", "403", "422", "503"):
+        assert code in res, (
+            f"GET /v1/me/sandbox/webhook-deliveries must document HTTP {code}"
+        )
+        content = res[code].get("content") or {}
+        schema = (content.get("application/json") or {}).get("schema") or {}
+        if code == "422":
+            props422: dict = {}
+            if "$ref" in schema:
+                key422 = schema["$ref"].rsplit("/", 1)[-1]
+                schemas = spec.get("components", {}).get("schemas", {})
+                ref422 = schemas.get(key422) or {}
+                props422 = ref422.get("properties") or {}
+            elif schema.get("type") == "object":
+                props422 = schema.get("properties") or {}
+            for key in ("code", "message", "request_id", "errors"):
+                assert key in props422, f"422 must include {key}"
+        else:
+            _assert_error_envelope_fields(spec, schema)
+
+
+@pytest.mark.policy
+def test_me_usage_summary_get_documents_errors(client):
+    """Story 8.1: usage summary documents canonical HTTP errors."""
+    r = client.get("/openapi.json")
+    assert r.status_code == 200
+    spec = r.json()
+    op = spec.get("paths", {}).get("/v1/me/usage/summary", {}).get("get") or {}
+    res = op.get("responses") or {}
+    for code in ("400", "401", "403", "422", "503"):
+        assert code in res, f"GET /v1/me/usage/summary must document HTTP {code}"
         content = res[code].get("content") or {}
         schema = (content.get("application/json") or {}).get("schema") or {}
         if code == "422":

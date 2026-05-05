@@ -22,6 +22,11 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _digits_cid() -> str:
+    """E.164 body valido (alinhado a normalize_whatsapp_to / preferences API)."""
+    return f"3519{uuid.uuid4().int % 10**8:08d}"
+
+
 def _ensure_tenant_b(dsn: str) -> None:
     with psycopg.connect(dsn) as conn:
         with conn.cursor() as cur:
@@ -53,11 +58,12 @@ def test_get_preferences_atdd_fixture(client: TestClient) -> None:
     assert r.status_code == 200, r.text
     b = r.json()
     assert b["contact_id"] == ATDD_CONTACT_PREFERENCES_ID
+    assert b.get("marketing_consent_recorded_at") is None
 
 
 @pytest.mark.integration
 def test_get_preferences_implicit_defaults_no_row(client: TestClient) -> None:
-    cid = "no-prefs-row-" + uuid.uuid4().hex[:8]
+    cid = _digits_cid()
     r = client.get(
         f"/v1/me/contacts/{cid}/preferences",
         headers={
@@ -72,6 +78,19 @@ def test_get_preferences_implicit_defaults_no_row(client: TestClient) -> None:
     assert b["transactional_allowed"] is True
     assert b["disclosure_copy_slug"] == "baseline-v1"
     assert b["updated_at"] is None
+    assert b.get("marketing_consent_recorded_at") is None
+
+
+@pytest.mark.integration
+def test_get_preferences_rejects_non_e164_contact_id(client: TestClient) -> None:
+    r = client.get(
+        "/v1/me/contacts/atdd-not-a-phone/preferences",
+        headers={
+            "X-Dev-Tenant-Id": TENANT,
+            "X-Dev-Roles": "viewer",
+        },
+    )
+    assert r.status_code == 422
 
 
 @pytest.mark.integration
@@ -86,6 +105,8 @@ def test_patch_preferences_org_admin(client: TestClient) -> None:
     )
     assert r1.status_code == 200, r1.text
     assert r1.json()["marketing_opt_in"] is True
+    c = r1.json().get("marketing_consent_recorded_at")
+    assert isinstance(c, str) and c
     r2 = client.patch(
         f"/v1/me/contacts/{ATDD_CONTACT_PREFERENCES_ID}/preferences",
         headers={
@@ -95,6 +116,7 @@ def test_patch_preferences_org_admin(client: TestClient) -> None:
         json={"marketing_opt_in": False},
     )
     assert r2.status_code == 200, r2.text
+    assert r2.json()["marketing_opt_in"] is False
 
 
 @pytest.mark.integration
@@ -111,10 +133,49 @@ def test_patch_preferences_viewer_forbidden(client: TestClient) -> None:
 
 
 @pytest.mark.integration
+def test_patch_preferences_agent_forbidden(client: TestClient) -> None:
+    r = client.patch(
+        f"/v1/me/contacts/{_digits_cid()}/preferences",
+        headers={
+            "X-Dev-Tenant-Id": TENANT,
+            "X-Dev-Roles": "agent",
+        },
+        json={"marketing_opt_in": True},
+    )
+    assert r.status_code == 403
+
+
+@pytest.mark.integration
+def test_patch_explicit_null_marketing_rejects(client: TestClient) -> None:
+    r = client.patch(
+        f"/v1/me/contacts/{ATDD_CONTACT_PREFERENCES_ID}/preferences",
+        headers={
+            "X-Dev-Tenant-Id": TENANT,
+            "X-Dev-Roles": "org_admin",
+        },
+        json={"marketing_opt_in": None},
+    )
+    assert r.status_code == 422
+
+
+@pytest.mark.integration
+def test_patch_slug_whitespace_only_rejects(client: TestClient) -> None:
+    r = client.patch(
+        f"/v1/me/contacts/{_digits_cid()}/preferences",
+        headers={
+            "X-Dev-Tenant-Id": TENANT,
+            "X-Dev-Roles": "org_admin",
+        },
+        json={"disclosure_copy_slug": "  "},
+    )
+    assert r.status_code == 422
+
+
+@pytest.mark.integration
 def test_cross_tenant_preferences_isolated(client: TestClient) -> None:
     dsn = os.environ["ALEMBIC_SYNC_URL"]
     _ensure_tenant_b(dsn)
-    cid = "rls-" + uuid.uuid4().hex[:10]
+    cid = _digits_cid()
     h_a = {"X-Dev-Tenant-Id": TENANT, "X-Dev-Roles": "org_admin"}
     h_b = {"X-Dev-Tenant-Id": TENANT_B, "X-Dev-Roles": "org_admin"}
     try:
@@ -141,8 +202,58 @@ def test_cross_tenant_preferences_isolated(client: TestClient) -> None:
         with psycopg.connect(dsn) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "DELETE FROM tenant_contact_preferences WHERE contact_id = %s",
-                    (cid,),
+                    "DELETE FROM tenant_contact_preferences "
+                    "WHERE contact_id = %s AND tenant_id IN (%s::uuid, %s::uuid)",
+                    (cid, TENANT, TENANT_B),
+                )
+            conn.commit()
+
+
+@pytest.mark.integration
+def test_cross_tenant_patch_does_not_mutate_other_tenant(client: TestClient) -> None:
+    dsn = os.environ["ALEMBIC_SYNC_URL"]
+    _ensure_tenant_b(dsn)
+    cid = _digits_cid()
+    h_a = {"X-Dev-Tenant-Id": TENANT, "X-Dev-Roles": "org_admin"}
+    h_b = {"X-Dev-Tenant-Id": TENANT_B, "X-Dev-Roles": "org_admin"}
+    try:
+        assert (
+            client.patch(
+                f"/v1/me/contacts/{cid}/preferences",
+                headers=h_a,
+                json={
+                    "marketing_opt_in": True,
+                    "disclosure_copy_slug": "only-a",
+                },
+            ).status_code
+            == 200
+        )
+        assert (
+            client.patch(
+                f"/v1/me/contacts/{cid}/preferences",
+                headers=h_b,
+                json={
+                    "marketing_opt_in": False,
+                    "disclosure_copy_slug": "only-b",
+                },
+            ).status_code
+            == 200
+        )
+        ra = client.get(
+            f"/v1/me/contacts/{cid}/preferences",
+            headers={**h_a, "X-Dev-Roles": "viewer"},
+        )
+        assert ra.status_code == 200, ra.text
+        ja = ra.json()
+        assert ja["marketing_opt_in"] is True
+        assert ja["disclosure_copy_slug"] == "only-a"
+    finally:
+        with psycopg.connect(dsn) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM tenant_contact_preferences "
+                    "WHERE contact_id = %s AND tenant_id IN (%s::uuid, %s::uuid)",
+                    (cid, TENANT, TENANT_B),
                 )
             conn.commit()
 

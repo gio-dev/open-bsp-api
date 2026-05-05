@@ -25,3 +25,4 @@ def test_story_63_contact_preferences_endpoint(client: TestClient) -> None:
     assert data["transactional_allowed"] is True
     assert data["disclosure_copy_slug"] == "baseline-v1"
     assert isinstance(data["updated_at"], str) and data["updated_at"]
+    assert data.get("marketing_consent_recorded_at") is None

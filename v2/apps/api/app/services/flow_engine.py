@@ -8,7 +8,9 @@ futuros (pre-mortem CS). Idempotencia de mensagens: chave
 from __future__ import annotations
 
 import logging
+import uuid
 from collections import deque
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -17,17 +19,35 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contacts.outbound_prefs import outbound_preference_violation
 from app.core.config import Settings, get_settings
+from app.db.models import AuditEvent, TenantContactPreference
 from app.db.models_flows import TenantFlowPublishActivation
 from app.db.models_outbound import OutboundWhatsappMessage
 from app.db.models_waba import WabaPhoneNumber
 from app.inbox.handoff_sync import upsert_handoff_from_engine
 from app.inbox.sync import derived_conversation_id
 from app.inbox.tag_sync import append_conversation_tag_by_name
+from app.services.flow_validation import coerce_flow_definition
 from app.whatsapp.meta_send import normalize_whatsapp_to
 
 log = logging.getLogger(__name__)
 
 MAX_ENGINE_STEPS = 48
+
+_DEFAULT_DISCLOSURE_SLUG = "baseline-v1"
+
+
+def _audit_flow_bool(b: bool) -> str:
+    return "true" if b else "false"
+
+
+def _contact_key_digits(contact_wa_id: str) -> str | None:
+    try:
+        return normalize_whatsapp_to(contact_wa_id)
+    except ValueError:
+        try:
+            return normalize_whatsapp_to("+" + contact_wa_id)
+        except ValueError:
+            return None
 
 
 def parse_flow_engine_environments(settings: Settings) -> frozenset[str]:
@@ -139,6 +159,7 @@ async def _queue_text_outbound(
     text: str,
     source_id: str,
     node_id: str,
+    preference_kind: str,
 ) -> UUID | None:
     idem_key = f"engine:{source_id}:{node_id}"[:128]
     dup = await session.scalar(
@@ -150,26 +171,22 @@ async def _queue_text_outbound(
     if dup is not None:
         return None
 
-    try:
-        to_digits = normalize_whatsapp_to(contact_wa_id)
-    except ValueError:
-        try:
-            to_digits = normalize_whatsapp_to("+" + contact_wa_id)
-        except ValueError:
-            log.warning(
-                "flow_engine_send_text_bad_recipient",
-                extra={
-                    "tenant_id": str(tenant_id),
-                    "contact_wa_id": contact_wa_id,
-                },
-            )
-            return None
+    to_digits = _contact_key_digits(contact_wa_id)
+    if to_digits is None:
+        log.warning(
+            "flow_engine_send_text_bad_recipient",
+            extra={
+                "tenant_id": str(tenant_id),
+                "contact_wa_id": contact_wa_id,
+            },
+        )
+        return None
 
     violation = await outbound_preference_violation(
         session,
         tenant_id,
         contact_key_digits=to_digits,
-        preference_kind="transactional",
+        preference_kind=preference_kind,
     )
     if violation is not None:
         log.warning(
@@ -210,6 +227,152 @@ async def _queue_text_outbound(
     session.add(row)
     await session.flush()
     return row.id
+
+
+def _parse_send_text_preference_kind(
+    node: dict[str, Any],
+    *,
+    request_id: str,
+    node_id: str,
+) -> str:
+    raw = str(node.get("preference_kind") or "").strip().lower()
+    if raw in ("", "transactional"):
+        return "transactional"
+    if raw in ("none", "marketing"):
+        return raw
+    if raw:
+        log.warning(
+            "flow_engine_unknown_preference_kind",
+            extra={
+                "request_id": request_id,
+                "node_id": node_id,
+                "preference_kind": raw,
+            },
+        )
+    return "transactional"
+
+
+async def _apply_update_preferences_action(
+    session: AsyncSession,
+    *,
+    tenant_id: UUID,
+    contact_wa_id: str,
+    request_id: str,
+    node_id: str,
+    marketing_opt_in: bool | None,
+    transactional_allowed: bool | None,
+    disclosure_copy_slug: str | None,
+) -> None:
+    """Persiste opt-in / transacional / versao de copy (Story 6.3 + fluxos 5.x)."""
+    to_digits = _contact_key_digits(contact_wa_id)
+    if to_digits is None:
+        log.warning(
+            "flow_engine_update_prefs_bad_recipient",
+            extra={
+                "tenant_id": str(tenant_id),
+                "contact_wa_id": contact_wa_id,
+                "request_id": request_id,
+                "node_id": node_id,
+            },
+        )
+        session.add(
+            AuditEvent(
+                id=uuid.uuid4(),
+                tenant_id=tenant_id,
+                actor_user_id=None,
+                resource_type="flow_engine",
+                summary=(
+                    f"update_prefs_skipped_bad_recipient:{request_id}:{node_id}:"
+                    f"{(contact_wa_id or '')[:80]!r}"
+                )[:1024],
+            ),
+        )
+        await session.flush()
+        return
+
+    now = datetime.now(timezone.utc)
+    changed_keys: list[str] = []
+
+    row = await session.scalar(
+        select(TenantContactPreference).where(
+            TenantContactPreference.tenant_id == tenant_id,
+            TenantContactPreference.contact_id == to_digits,
+        ),
+    )
+
+    slug_in = (
+        disclosure_copy_slug.strip()[:128]
+        if disclosure_copy_slug and disclosure_copy_slug.strip()
+        else None
+    )
+
+    if row is None:
+        old_m, old_t, old_s = False, True, _DEFAULT_DISCLOSURE_SLUG
+        mk = marketing_opt_in if marketing_opt_in is not None else False
+        tk = transactional_allowed if transactional_allowed is not None else True
+        dc = slug_in if slug_in is not None else _DEFAULT_DISCLOSURE_SLUG
+        row = TenantContactPreference(
+            tenant_id=tenant_id,
+            contact_id=to_digits,
+            marketing_opt_in=mk,
+            transactional_allowed=tk,
+            disclosure_copy_slug=dc,
+            marketing_consent_recorded_at=now if mk else None,
+            updated_at=now,
+        )
+        session.add(row)
+        if marketing_opt_in is not None:
+            changed_keys.append("marketing_opt_in")
+        if transactional_allowed is not None:
+            changed_keys.append("transactional_allowed")
+        if slug_in is not None:
+            changed_keys.append("disclosure_copy_slug")
+    else:
+        old_m = row.marketing_opt_in
+        old_t = row.transactional_allowed
+        old_s = row.disclosure_copy_slug
+        if marketing_opt_in is not None and marketing_opt_in != row.marketing_opt_in:
+            row.marketing_opt_in = marketing_opt_in
+            changed_keys.append("marketing_opt_in")
+        if (
+            transactional_allowed is not None
+            and transactional_allowed != row.transactional_allowed
+        ):
+            row.transactional_allowed = transactional_allowed
+            changed_keys.append("transactional_allowed")
+        if slug_in is not None and slug_in != row.disclosure_copy_slug:
+            row.disclosure_copy_slug = slug_in
+            changed_keys.append("disclosure_copy_slug")
+        if changed_keys:
+            row.updated_at = now
+        if row.marketing_opt_in and not old_m:
+            row.marketing_consent_recorded_at = now
+
+    if changed_keys:
+        new_m, new_t, new_s = (
+            row.marketing_opt_in,
+            row.transactional_allowed,
+            row.disclosure_copy_slug,
+        )
+        diff: list[str] = []
+        if new_m != old_m:
+            diff.append(f"m:{_audit_flow_bool(old_m)}->{_audit_flow_bool(new_m)}")
+        if new_t != old_t:
+            diff.append(f"t:{_audit_flow_bool(old_t)}->{_audit_flow_bool(new_t)}")
+        if new_s != old_s:
+            diff.append(f"slug:{old_s[:48]}->{new_s[:48]}")
+        session.add(
+            AuditEvent(
+                id=uuid.uuid4(),
+                tenant_id=tenant_id,
+                actor_user_id=None,
+                resource_type="contact_preferences",
+                summary=(
+                    f"flow_engine:{request_id}:{node_id}:{to_digits}:{'|'.join(diff)}"
+                )[:1024],
+            ),
+        )
+    await session.flush()
 
 
 async def run_flow_engine_for_inbound_message(
@@ -253,12 +416,12 @@ async def run_flow_engine_for_inbound_message(
         )
         return []
 
-    definition = await _load_latest_published_definition(
+    definition_raw = await _load_latest_published_definition(
         session,
         tenant_id,
         runtime_env,
     )
-    if not definition:
+    if not definition_raw:
         log.debug(
             "flow_engine_no_published_flow",
             extra={
@@ -268,6 +431,21 @@ async def run_flow_engine_for_inbound_message(
             },
         )
         return []
+
+    graph_model, coerce_err = coerce_flow_definition(dict(definition_raw))
+    if coerce_err or graph_model is None:
+        log.warning(
+            "flow_engine_publish_snapshot_coerce_failed",
+            extra={
+                "request_id": request_id,
+                "tenant_id": str(tenant_id),
+                "environment": runtime_env,
+                "errors": coerce_err[:8],
+            },
+        )
+        return []
+
+    definition = graph_model.model_dump(mode="python")
 
     fixture = _fixture_from_message(message)
     log.debug(
@@ -335,6 +513,11 @@ async def run_flow_engine_for_inbound_message(
                     body = str(node.get("text_body") or "").strip()
                     if not body:
                         raise ValueError("text_body vazio")
+                    pk = _parse_send_text_preference_kind(
+                        node,
+                        request_id=request_id,
+                        node_id=nid,
+                    )
                     oid = await _queue_text_outbound(
                         session,
                         tenant_id=tenant_id,
@@ -344,9 +527,31 @@ async def run_flow_engine_for_inbound_message(
                         text=body,
                         source_id=source_id,
                         node_id=nid,
+                        preference_kind=pk,
                     )
                     if oid is not None:
                         out_deliver.append((oid, tenant_id))
+                elif ax == "update_preferences":
+                    m_raw = node.get("marketing_opt_in")
+                    m_set = m_raw if isinstance(m_raw, bool) else None
+                    t_raw = node.get("transactional_allowed")
+                    t_set = t_raw if isinstance(t_raw, bool) else None
+                    d_raw = node.get("disclosure_copy_slug")
+                    d_slug: str | None = (
+                        str(d_raw).strip()[:128]
+                        if isinstance(d_raw, str) and str(d_raw).strip()
+                        else None
+                    )
+                    await _apply_update_preferences_action(
+                        session,
+                        tenant_id=tenant_id,
+                        contact_wa_id=contact_wa_id,
+                        request_id=request_id,
+                        node_id=nid,
+                        marketing_opt_in=m_set,
+                        transactional_allowed=t_set,
+                        disclosure_copy_slug=d_slug,
+                    )
                 elif ax == "apply_tag":
                     tname = str(node.get("tag_name") or "").strip()
                     if not tname:

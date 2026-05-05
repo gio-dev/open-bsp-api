@@ -28,8 +28,13 @@ from app.api.routes.me_message_templates import (
 )
 from app.api.routes.me_messages import router as me_messages_router
 from app.api.routes.me_organization import router as me_org_router
+from app.api.routes.me_sandbox_webhook_deliveries import (
+    router as me_sandbox_webhook_deliveries_router,
+)
+from app.api.routes.me_usage import router as me_usage_router
 from app.api.routes.me_waba import router as me_waba_router
 from app.api.routes.me_webhook_secrets import router as me_webhook_secrets_router
+from app.api.routes.policy_deprecation import router as policy_deprecation_router
 from app.api.routes.webhooks_whatsapp import router as wa_webhook_router
 from app.core.config import get_settings
 from app.core.errors import (
@@ -37,6 +42,7 @@ from app.core.errors import (
     canonical_validation_error_body,
     field_errors_from_request_validation,
 )
+from app.core.publication import api_semantic_version
 from app.db.session import reset_engine
 from app.whatsapp.outbound_sweep import outbound_sweep_loop
 
@@ -59,9 +65,21 @@ async def lifespan(_app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    semver = api_semantic_version()
     application = FastAPI(
         title="Open BSP API",
-        version="0.1.0",
+        version=semver,
+        description=(
+            "Contrato REST estavel em `/v1` (FR35, FR36). "
+            "Em mutacoes idempotentes, envie `Idempotency-Key` onde estiver "
+            "documentado (ex.: `POST /v1/me/messages/send`, FR40). "
+            "Politica publica de deprecacao e janelas: "
+            "`GET /v1/policy/deprecation` (FR37); ver tambem CHANGELOG na raiz "
+            "do pacote `v2/apps/api`. "
+            "Sandbox / reconciliacao ingresso: "
+            "`GET /v1/me/sandbox/webhook-deliveries` (FR38, FR39; org_admin). "
+            "Metering aggregate: `GET /v1/me/usage/summary` (FR41; org_admin)."
+        ),
         lifespan=lifespan,
         openapi_url="/openapi.json",
         docs_url="/docs",
@@ -97,7 +115,9 @@ def create_app() -> FastAPI:
                     "queued/rate_limited; POST tambem dispara entrega em background. "
                     "Story 6.3: campo opcional `preference_kind` "
                     "(`none|marketing|transactional`) alinha opt-in com "
-                    "`tenant_contact_preferences` pelo destino normalizado."
+                    "`tenant_contact_preferences` pelo destino normalizado. "
+                    "Story 7.1: `POST .../send` accepts `Idempotency-Key`; "
+                    "429 and 503 responses may include `Retry-After`."
                 ),
             },
             {
@@ -134,7 +154,8 @@ def create_app() -> FastAPI:
                 "name": "contacts",
                 "description": (
                     "Preferencias LGPD / disclosure por contacto (Story 6.3 FR31-33). "
-                    "GET leitura tenant; PATCH com papeis que enviam inbox. "
+                    "GET leitura tenant; PATCH org_admin ou operator; "
+                    "`contact_id` e wa_id E.164 normalizado (sem '+'). "
                     "Registo DSAR formal continua no Epico 9."
                 ),
             },
@@ -143,8 +164,33 @@ def create_app() -> FastAPI:
                 "description": (
                     "Iframe B2B2C (6.1): `POST /embed/session/validate` (publico); "
                     "allowlist `Origin`; gestao `GET|PUT /me/embed/origins`; "
-                    "`POST /me/embed/token`. Segredo servidor: "
+                    "`POST /me/embed/token`; metadados a11y MVP `GET /me/embed/"
+                    "a11y-status` (6.4 CI). Segredo servidor: "
                     "`OPENBSP_EMBED_JWT_SECRET` (NFR-SEC-01)."
+                ),
+            },
+            {
+                "name": "policy",
+                "description": (
+                    "Politica publica para integradores (7.2 / FR37): ciclo de vida, "
+                    "deprecacao e alinhamento com CHANGELOG/OpenAPI."
+                ),
+            },
+            {
+                "name": "sandbox-webhooks",
+                "description": (
+                    "Historico tenant-scoped de entregas de ingresso webhook Meta "
+                    "(7.3 / FR38, FR39): "
+                    "`GET /me/sandbox/webhook-deliveries` (org_admin); RLS em "
+                    "`tenant_sandbox_webhook_deliveries`."
+                ),
+            },
+            {
+                "name": "usage",
+                "description": (
+                    "Metering MVP (8.1 / FR41): `GET /me/usage/summary` com agregados "
+                    "diarios UTC por metrica (inbound/outbound aceite); sem PII; "
+                    "RLS em `tenant_metering_daily`."
                 ),
             },
         ],
@@ -154,10 +200,18 @@ def create_app() -> FastAPI:
     cors_list: list[str] = []
     if settings.console_cors_origin:
         o = settings.console_cors_origin.strip()
+        if o == "*":
+            raise ValueError(
+                "console_cors_origin must not be '*' with allow_credentials=True"
+            )
         if o:
             cors_list.append(o)
     for part in (settings.embed_cors_origins or "").split(","):
         p = part.strip()
+        if p == "*":
+            raise ValueError(
+                "embed_cors_origins must not contain '*' with allow_credentials=True"
+            )
         if p and p not in cors_list:
             cors_list.append(p)
     if cors_list:
@@ -223,6 +277,7 @@ def create_app() -> FastAPI:
         )
 
     application.include_router(health_router, prefix="/v1")
+    application.include_router(policy_deprecation_router, prefix="/v1")
     application.include_router(auth_oidc_router, prefix="/v1")
     application.include_router(embed_session_router, prefix="/v1")
     application.include_router(me_org_router, prefix="/v1")
@@ -231,6 +286,7 @@ def create_app() -> FastAPI:
     application.include_router(me_inbox_handoff_router, prefix="/v1")
     application.include_router(me_channel_health_router, prefix="/v1")
     application.include_router(me_flows_router, prefix="/v1")
+    application.include_router(me_sandbox_webhook_deliveries_router, prefix="/v1")
     application.include_router(me_engine_router, prefix="/v1")
     application.include_router(me_embed_router, prefix="/v1")
     application.include_router(me_members_router, prefix="/v1")
@@ -239,6 +295,7 @@ def create_app() -> FastAPI:
     application.include_router(me_waba_router, prefix="/v1")
     application.include_router(me_message_templates_router, prefix="/v1")
     application.include_router(me_messages_router, prefix="/v1")
+    application.include_router(me_usage_router, prefix="/v1")
     application.include_router(me_contact_prefs_router, prefix="/v1")
     application.include_router(wa_webhook_router, prefix="/v1")
     return application

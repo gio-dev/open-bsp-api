@@ -10,8 +10,10 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.db.models_outbound import OutboundWhatsappMessage
+from app.db.models_usage import USAGE_METRIC_OUTBOUND_MESSAGES_ACCEPTED
 from app.db.models_waba import WabaPhoneNumber
 from app.db.session import tenant_session
+from app.services.usage_metering import increment_tenant_daily_metric
 from app.whatsapp.meta_send import send_whatsapp_text
 
 log = logging.getLogger(__name__)
@@ -90,6 +92,13 @@ async def deliver_outbound_message(message_id: UUID, tenant_id: UUID) -> None:
             row.error_code = None
             row.error_message = None
             row.next_attempt_at = None
+            await increment_tenant_daily_metric(
+                session,
+                tenant_id=tenant_id,
+                metric_key=USAGE_METRIC_OUTBOUND_MESSAGES_ACCEPTED,
+                delta=1,
+                at=now,
+            )
         elif result.http_status == 429 or result.error_code == "rate_limited":
             row.status = "rate_limited"
             row.upstream_fault = "meta"

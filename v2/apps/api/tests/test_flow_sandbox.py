@@ -41,7 +41,7 @@ def test_diamond_converges_single_action_visit() -> None:
         correlation_id="cid-diamond",
     )
     assert status == "succeeded"
-    action_hits = [x for x in trace if "node a1 (action)" in x]
+    action_hits = [x for x in trace if "node a1 (action/" in x]
     assert len(action_hits) == 1
 
 

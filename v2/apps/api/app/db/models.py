@@ -133,7 +133,7 @@ class TenantEmbedOrigin(Base):
 class TenantContactPreference(Base):
     """Preferencias de disclosure / marketing por contacto (Story 6.3).
 
-    ``contact_id`` identificador da API (ex.: wa_id so digitos ou slug).
+    ``contact_id`` e o wa_id normalizado (E.164 sem '+'), alinhado ao gate outbound.
     """
 
     __tablename__ = "tenant_contact_preferences"
@@ -147,6 +147,9 @@ class TenantContactPreference(Base):
     marketing_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False)
     transactional_allowed: Mapped[bool] = mapped_column(Boolean, nullable=False)
     disclosure_copy_slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    marketing_consent_recorded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

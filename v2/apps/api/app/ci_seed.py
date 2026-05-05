@@ -159,6 +159,7 @@ def main() -> int:
                   marketing_opt_in = EXCLUDED.marketing_opt_in,
                   transactional_allowed = EXCLUDED.transactional_allowed,
                   disclosure_copy_slug = EXCLUDED.disclosure_copy_slug,
+                  marketing_consent_recorded_at = NULL,
                   updated_at = now()
                 """,
                 (tenant_id, ATDD_CONTACT_PREFERENCES_ID),

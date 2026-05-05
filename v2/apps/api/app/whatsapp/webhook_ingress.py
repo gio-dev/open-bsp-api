@@ -12,16 +12,42 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
+from app.db.models_sandbox_webhook_deliveries import TenantSandboxWebhookDelivery
+from app.db.models_usage import USAGE_METRIC_INBOUND_MESSAGES
 from app.db.models_webhook_inbound import WebhookInboundEvent
 from app.db.session import platform_session, tenant_session
 from app.inbox.sync import upsert_inbox_conversation_from_inbound
 from app.services.flow_engine import run_flow_engine_for_inbound_message
+from app.services.usage_metering import increment_tenant_daily_metric
 from app.whatsapp.identity import resolve_inbound_identity
 from app.whatsapp.outbound_worker import deliver_outbound_message
 
 log = logging.getLogger(__name__)
+
+
+async def _record_sandbox_webhook_delivery(
+    session: AsyncSession,
+    *,
+    tenant_id: UUID,
+    request_id: str,
+    status: Literal["accepted"],
+    enqueued: int,
+    deduplicated: int,
+    skipped: int,
+) -> None:
+    await session.execute(
+        insert(TenantSandboxWebhookDelivery).values(
+            tenant_id=tenant_id,
+            request_id=request_id,
+            status=status,
+            enqueued=enqueued,
+            deduplicated=deduplicated,
+            skipped=skipped,
+        )
+    )
 
 
 def meta_unix_ts(raw: str | int | float | None) -> datetime | None:
@@ -156,7 +182,7 @@ async def enqueue_whatsapp_payload(
         return {"enqueued": 0, "deduplicated": 0, "skipped": 0}
 
     rows: list[_EnqueueRow] = []
-    skipped = 0
+    skipped_by_tenant: dict[UUID, int] = defaultdict(int)
     wh_max_age = settings.whatsapp_webhook_max_event_age_seconds
 
     for entry in payload.get("entry") or []:
@@ -214,7 +240,7 @@ async def enqueue_whatsapp_payload(
                     continue
                 sid_raw = msg.get("id")
                 if not isinstance(sid_raw, str) or not sid_raw.strip():
-                    skipped += 1
+                    skipped_by_tenant[tenant_id] += 1
                     continue
                 source_id = sid_raw.strip()
                 ts = meta_unix_ts(msg.get("timestamp"))
@@ -278,7 +304,7 @@ async def enqueue_whatsapp_payload(
                     continue
                 sid_raw = st.get("id")
                 if not isinstance(sid_raw, str) or not sid_raw.strip():
-                    skipped += 1
+                    skipped_by_tenant[tenant_id] += 1
                     continue
                 source_id = sid_raw.strip()
                 ts = meta_unix_ts(st.get("timestamp"))
@@ -317,17 +343,34 @@ async def enqueue_whatsapp_payload(
                 )
 
     if not rows:
-        return {"enqueued": 0, "deduplicated": 0, "skipped": skipped}
+        total_skipped = sum(skipped_by_tenant.values())
+        for tid, sk in skipped_by_tenant.items():
+            if sk <= 0:
+                continue
+            async with tenant_session(tid) as session:
+                await _record_sandbox_webhook_delivery(
+                    session,
+                    tenant_id=tid,
+                    request_id=request_id,
+                    status="accepted",
+                    enqueued=0,
+                    deduplicated=0,
+                    skipped=sk,
+                )
+        return {"enqueued": 0, "deduplicated": 0, "skipped": total_skipped}
 
     by_tenant: dict[UUID, list[_EnqueueRow]] = defaultdict(list)
     for r in rows:
         by_tenant[r.tenant_id].append(r)
 
-    enqueued = 0
-    deduplicated = 0
+    enqueued_total = 0
+    deduplicated_total = 0
     outbound_deliveries: list[tuple[UUID, UUID]] = []
 
     for tid, trows in by_tenant.items():
+        tenant_enq = 0
+        tenant_dedup = 0
+        tenant_skip_part = skipped_by_tenant[tid]
         async with tenant_session(tid) as session:
             for r in trows:
                 stmt = (
@@ -347,7 +390,17 @@ async def enqueue_whatsapp_payload(
                 )
                 res = await session.execute(stmt)
                 if res.scalar_one_or_none() is not None:
-                    enqueued += 1
+                    enqueued_total += 1
+                    tenant_enq += 1
+                    if r.event_kind == "message":
+                        bucket_at = r.message_ts or datetime.now(timezone.utc)
+                        await increment_tenant_daily_metric(
+                            session,
+                            tenant_id=tid,
+                            metric_key=USAGE_METRIC_INBOUND_MESSAGES,
+                            delta=1,
+                            at=bucket_at,
+                        )
                     if (
                         r.event_kind == "message"
                         and r.contact_wa_id
@@ -378,13 +431,38 @@ async def enqueue_whatsapp_payload(
                         )
                         outbound_deliveries.extend(batch)
                 else:
-                    deduplicated += 1
+                    deduplicated_total += 1
+                    tenant_dedup += 1
+            await _record_sandbox_webhook_delivery(
+                session,
+                tenant_id=tid,
+                request_id=request_id,
+                status="accepted",
+                enqueued=tenant_enq,
+                deduplicated=tenant_dedup,
+                skipped=tenant_skip_part,
+            )
+
+    for tid, sk in skipped_by_tenant.items():
+        if tid in by_tenant or sk <= 0:
+            continue
+        async with tenant_session(tid) as session:
+            await _record_sandbox_webhook_delivery(
+                session,
+                tenant_id=tid,
+                request_id=request_id,
+                status="accepted",
+                enqueued=0,
+                deduplicated=0,
+                skipped=sk,
+            )
 
     for mid, otid in outbound_deliveries:
         await deliver_outbound_message(mid, otid)
 
+    total_skipped = sum(skipped_by_tenant.values())
     return {
-        "enqueued": enqueued,
-        "deduplicated": deduplicated,
-        "skipped": skipped,
+        "enqueued": enqueued_total,
+        "deduplicated": deduplicated_total,
+        "skipped": total_skipped,
     }

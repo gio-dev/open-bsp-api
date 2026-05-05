@@ -4,10 +4,10 @@ Choke points que aplicam `preference_kind` (marketing | transactional | none):
 
 - ``POST /v1/me/messages/send`` (consola / integrador) chama
   :func:`gate_outbound_contact_preferences`.
-- Motor de fluxos 5.5 (``send_text`` no grafo) enfileira outbound com categoria
-  **transacional** via :func:`outbound_preference_violation` antes de criar linha
-  na fila. Envios auto sem classificar continuam a **nao** passar por este gate
-  (usar ``preference_kind=none`` no POST ou evoluir o motor com nos explicitos).
+- Motor de fluxos 5.5: ``send_text`` respeita ``preference_kind`` no no (omitido:
+  **transacional**). Acao ``update_preferences`` persiste
+  ``tenant_contact_preferences`` + ``AuditEvent`` (actor sistema); alinha com
+  granularidade 6.3 / FR31-33.
 
 Outros caminhos (workers, SQL directo) estao fora do contrato ate ficarem
 documentados; ver README Epic 6.3.
@@ -19,12 +19,13 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import TenantContactPreference
 
 
 async def load_contact_preference_flags(
-    session,
+    session: AsyncSession,
     tenant_id: UUID,
     contact_id_digits: str,
 ) -> tuple[bool, bool]:
@@ -41,7 +42,7 @@ async def load_contact_preference_flags(
 
 
 async def outbound_preference_violation(
-    session,
+    session: AsyncSession,
     tenant_id: UUID,
     *,
     contact_key_digits: str,
@@ -65,22 +66,33 @@ async def outbound_preference_violation(
 
 
 async def gate_outbound_contact_preferences(
-    session,
+    session: AsyncSession,
     tenant_id: UUID,
     *,
     contact_key_digits: str,
     preference_kind: str,
-) -> None:
-    violation = await outbound_preference_violation(
-        session,
-        tenant_id,
-        contact_key_digits=contact_key_digits,
-        preference_kind=preference_kind,
-    )
-    if violation == "invalid_recipient_for_preference_kind":
+) -> tuple[bool, bool] | None:
+    """Valida preferencias; devolve (mk, tk) apos uma leitura se kind classificado.
+
+    Com ``preference_kind == \"none\"`` devolve None (sem query).
+    """
+    if preference_kind == "none":
+        return None
+    if not contact_key_digits.isdigit():
         raise HTTPException(
             status_code=422,
             detail="preference_kind requires digit-only WhatsApp recipient",
         )
-    if violation is not None:
-        raise HTTPException(status_code=409, detail=violation)
+    mk, tk = await load_contact_preference_flags(
+        session,
+        tenant_id,
+        contact_key_digits,
+    )
+    if preference_kind == "marketing" and not mk:
+        raise HTTPException(status_code=409, detail="marketing_blocked_by_preferences")
+    if preference_kind == "transactional" and not tk:
+        raise HTTPException(
+            status_code=409,
+            detail="transactional_blocked_by_preferences",
+        )
+    return mk, tk

@@ -79,6 +79,61 @@ def _graph_handoff() -> dict:
     }
 
 
+def _graph_consent_then_marketing_text() -> dict:
+    return {
+        "nodes": [
+            {"id": "t_cp", "kind": "trigger"},
+            {
+                "id": "p_prefs",
+                "kind": "action",
+                "action_type": "update_preferences",
+                "marketing_opt_in": True,
+                "transactional_allowed": True,
+                "disclosure_copy_slug": "flow-consent-ci",
+            },
+            {
+                "id": "a_mkt",
+                "kind": "action",
+                "action_type": "send_text",
+                "text_body": "promo after consent node",
+                "preference_kind": "marketing",
+            },
+        ],
+        "edges": [
+            {"source": "t_cp", "target": "p_prefs"},
+            {"source": "p_prefs", "target": "a_mkt"},
+        ],
+    }
+
+
+def _graph_marketing_send_only() -> dict:
+    """Marketing apos update_preferences (regra 6.3). Opt-in false -> bloqueado."""
+    return {
+        "nodes": [
+            {"id": "t_mk", "kind": "trigger"},
+            {
+                "id": "p0",
+                "kind": "action",
+                "action_type": "update_preferences",
+                "marketing_opt_in": False,
+                "transactional_allowed": True,
+                "disclosure_copy_slug": "baseline-v1",
+            },
+            {
+                "id": "a_mk",
+                "kind": "action",
+                "action_type": "send_text",
+                "text_body": "marketing without opt-in path",
+                "preference_kind": "marketing",
+            },
+        ],
+        "edges": [
+            {"source": "t_mk", "target": "p0"},
+            {"source": "p0", "target": "a_mk"},
+        ],
+    }
+
+
 def _insert_waba_phone(
     admin: str,
     *,
@@ -398,6 +453,116 @@ def test_engine_skips_when_line_environment_not_allowlisted(
     wh = _post_whatsapp_webhook(
         client,
         _webhook_payload(uid=uid, ts=str(int(time.time())), phone_number_id=dev_phone),
+        "ingress-secret",
+    )
+    assert wh.status_code == 202, wh.text
+
+    pat = f"engine:{uid}%"
+    with psycopg.connect(admin) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                (
+                    "SELECT 1 FROM outbound_whatsapp_messages "
+                    "WHERE tenant_id = %s::uuid AND idempotency_key LIKE %s"
+                ),
+                (TENANT, pat),
+            )
+            assert cur.fetchone() is None
+
+
+@pytest.mark.integration
+def test_engine_update_preferences_unblocks_marketing_send(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENBSP_FLOW_ENGINE_ENABLED", "true")
+    monkeypatch.setenv("OPENBSP_FLOW_ENGINE_ENVIRONMENTS", "staging")
+    monkeypatch.setenv("WHATSAPP_WEBHOOK_APP_SECRET", "ingress-secret")
+
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+
+    admin = os.environ["ALEMBIC_SYNC_URL"]
+    phone = f"ci-engine-pref-{uuid.uuid4().hex[:8]}"
+    _insert_waba_phone(admin, phone_number_id=phone, environment="staging")
+    _create_publish_flow(
+        client,
+        _graph_consent_then_marketing_text(),
+        publish_env="staging",
+    )
+
+    contact = f"15579{uuid.uuid4().int % 10**7:07d}"
+    uid = f"wamid.prefs-{time.time_ns()}"
+    wh = _post_whatsapp_webhook(
+        client,
+        _webhook_payload(
+            uid=uid,
+            ts=str(int(time.time())),
+            phone_number_id=phone,
+            from_num=contact,
+        ),
+        "ingress-secret",
+    )
+    assert wh.status_code == 202, wh.text
+
+    pat = f"engine:{uid}%"
+    with psycopg.connect(admin) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                (
+                    "SELECT 1 FROM outbound_whatsapp_messages "
+                    "WHERE tenant_id = %s::uuid AND idempotency_key LIKE %s"
+                ),
+                (TENANT, pat),
+            )
+            assert cur.fetchone() is not None
+            cur.execute(
+                (
+                    "SELECT marketing_opt_in, disclosure_copy_slug "
+                    "FROM tenant_contact_preferences "
+                    "WHERE tenant_id = %s::uuid AND contact_id = %s"
+                ),
+                (TENANT, contact),
+            )
+            pr = cur.fetchone()
+    assert pr is not None
+    assert pr[0] is True
+    assert pr[1] == "flow-consent-ci"
+
+
+@pytest.mark.integration
+def test_engine_blocks_marketing_send_without_opt_in_row(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENBSP_FLOW_ENGINE_ENABLED", "true")
+    monkeypatch.setenv("OPENBSP_FLOW_ENGINE_ENVIRONMENTS", "staging")
+    monkeypatch.setenv("WHATSAPP_WEBHOOK_APP_SECRET", "ingress-secret")
+
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+
+    admin = os.environ["ALEMBIC_SYNC_URL"]
+    phone = f"ci-engine-mblk-{uuid.uuid4().hex[:8]}"
+    _insert_waba_phone(admin, phone_number_id=phone, environment="staging")
+    _create_publish_flow(
+        client,
+        _graph_marketing_send_only(),
+        publish_env="staging",
+    )
+
+    contact = f"15578{uuid.uuid4().int % 10**7:07d}"
+    uid = f"wamid.mblk-{time.time_ns()}"
+    wh = _post_whatsapp_webhook(
+        client,
+        _webhook_payload(
+            uid=uid,
+            ts=str(int(time.time())),
+            phone_number_id=phone,
+            from_num=contact,
+        ),
         "ingress-secret",
     )
     assert wh.status_code == 202, wh.text

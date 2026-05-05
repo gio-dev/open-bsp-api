@@ -49,6 +49,7 @@ select = ["E", "F", "I"]
 "tests/integration/test_story55_flow_engine.py" = ["I001"]
 "tests/integration/test_story61_embed_session.py" = ["I001"]
 "tests/integration/test_story62_conversation_mode.py" = ["I001"]
+"tests/test_outbound_prefs.py" = ["I001"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -63,5 +64,7 @@ markers = [
     "epic4_atdd: Epic 4 ATDD subset (incremental CI gate)",
     "epic5_atdd: Epic 5 ATDD subset (incremental CI gate)",
     "epic6_atdd: Epic 6 ATDD subset (incremental CI gate)",
+    "epic7_atdd: Epic 7 ATDD subset (incremental CI gate)",
+    "epic8_atdd: Epic 8 ATDD subset (incremental CI gate)",
 ]
 asyncio_mode = "auto"

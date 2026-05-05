@@ -2,9 +2,53 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from collections import deque
+from typing import Literal
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 MAX_FLOW_NODES = 200
+
+
+def _is_update_preferences_action(n: FlowNodePayload) -> bool:
+    return n.kind == "action" and n.action_type == "update_preferences"
+
+
+def _is_marketing_send_text(n: FlowNodePayload) -> bool:
+    return (
+        n.kind == "action"
+        and n.action_type == "send_text"
+        and n.preference_kind == "marketing"
+    )
+
+
+def _marketing_send_reachable_without_update_prefs(
+    adj: dict[str, list[str]],
+    by_id: dict[str, FlowNodePayload],
+    trigger_id: str,
+    target_id: str,
+) -> bool:
+    """True se existe caminho trigger -> target sem passar por update_preferences."""
+    q: deque[tuple[str, bool]] = deque([(trigger_id, False)])
+    seen: set[tuple[str, bool]] = set()
+    while q:
+        u, pe = q.popleft()
+        if (u, pe) in seen:
+            continue
+        seen.add((u, pe))
+        if u == target_id and _is_marketing_send_text(by_id[u]) and not pe:
+            return True
+        u_is = _is_update_preferences_action(by_id[u])
+        for v in adj.get(u, ()):
+            q.append((v, pe or u_is))
+    return False
 
 
 class FlowNodePayload(BaseModel):
@@ -22,11 +66,31 @@ class FlowNodePayload(BaseModel):
     )
     action_type: str | None = Field(
         default=None,
-        description='Para kind=action: "send_text" | "apply_tag" | "handoff".',
+        description=(
+            'Para kind=action: "send_text" | "apply_tag" | "handoff" | '
+            '"update_preferences".'
+        ),
     )
     text_body: str | None = Field(default=None, max_length=4096)
     tag_name: str | None = Field(default=None, max_length=128)
     handoff_intent: str | None = Field(default=None, max_length=512)
+    preference_kind: Literal["none", "marketing", "transactional"] | None = Field(
+        default=None,
+        description=(
+            "Apenas em send_text: categoria outbound (omitido: transactional). "
+            "`none` desliga o gate de preferencias no motor "
+            "(como POST /messages/send; FR33)."
+        ),
+    )
+    marketing_opt_in: bool | None = Field(
+        default=None,
+        description="Apenas em update_preferences: novo valor de opt-in marketing.",
+    )
+    transactional_allowed: bool | None = Field(
+        default=None,
+        description="Apenas em update_preferences: permite envios transacionais.",
+    )
+    disclosure_copy_slug: str | None = Field(default=None, max_length=128)
 
     @field_validator("kind")
     @classmethod
@@ -36,13 +100,38 @@ class FlowNodePayload(BaseModel):
             raise ValueError(msg.format(v))
         return v
 
+    @model_validator(mode="after")
+    def _preference_fields_match_action(self):  # noqa: ANN201
+        at = self.action_type
+        slug = (self.disclosure_copy_slug or "").strip()
+        has_pref_patch = (
+            self.marketing_opt_in is not None
+            or self.transactional_allowed is not None
+            or bool(slug)
+        )
+        if self.preference_kind is not None and at != "send_text":
+            raise ValueError(
+                'preference_kind so e permitido quando action_type == "send_text"',
+            )
+        if has_pref_patch and at != "update_preferences":
+            raise ValueError(
+                "marketing_opt_in, transactional_allowed e disclosure_copy_slug "
+                'apenas com action_type == "update_preferences"',
+            )
+        if at == "update_preferences" and self.preference_kind is not None:
+            raise ValueError("update_preferences nao utiliza preference_kind")
+        return self
+
     @field_validator("action_type")
     @classmethod
     def _action_type_ok(cls, v: str | None) -> str | None:
         if v is None:
             return None
-        if v not in ("send_text", "apply_tag", "handoff"):
-            msg = 'action_type deve ser send_text, apply_tag ou handoff (recebido "{}")'
+        if v not in ("send_text", "apply_tag", "handoff", "update_preferences"):
+            msg = (
+                "action_type deve ser send_text, apply_tag, handoff ou "
+                'update_preferences (recebido "{}")'
+            )
             raise ValueError(msg.format(v))
         return v
 
@@ -217,6 +306,41 @@ def validate_flow_structure(graph: FlowGraphPayload) -> list[dict[str, str]]:
                         "message": "obrigatorio quando action_type=apply_tag",
                     },
                 )
+        elif n.action_type == "update_preferences":
+            has_any = (
+                n.marketing_opt_in is not None
+                or n.transactional_allowed is not None
+                or bool((n.disclosure_copy_slug or "").strip())
+            )
+            if not has_any:
+                errs.append(
+                    {
+                        "field": f"nodes.{nid}",
+                        "message": (
+                            "update_preferences exige pelo menos um de: "
+                            "marketing_opt_in, transactional_allowed, "
+                            "disclosure_copy_slug"
+                        ),
+                    },
+                )
+
+    if errs:
+        return errs
+
+    for nid in reachable:
+        if not _is_marketing_send_text(by_id[nid]):
+            continue
+        if _marketing_send_reachable_without_update_prefs(adj, by_id, trigger_id, nid):
+            errs.append(
+                {
+                    "field": f"nodes.{nid}",
+                    "message": (
+                        "send_text com preference_kind=marketing exige que todo o "
+                        "caminho desde o trigger passe por um no "
+                        "update_preferences antes deste envio (Story 6.3)"
+                    ),
+                },
+            )
 
     if errs:
         return errs

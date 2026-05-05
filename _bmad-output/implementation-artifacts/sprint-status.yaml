@@ -35,7 +35,7 @@
 #   already exists (never downgrade done to backlog)
 
 generated: "2026-04-22T17:15:00Z"
-last_updated: "2026-04-30T18:30:00Z"
+last_updated: "2026-05-08T12:00:00Z"
 project: open-bsp-api
 project_key: NOKEY
 tracking_system: file-system
@@ -80,18 +80,18 @@ development_status:
   epic-6: in-progress
   6-1-embed-autenticado-jwt-validacao-origem: done
   6-2-copy-estados-bot-humano: done
-  6-3-disclosure-tratamento-opt-in-granular: review
-  6-4-acessibilidade-embed: ready-for-dev
+  6-3-disclosure-tratamento-opt-in-granular: done
+  6-4-acessibilidade-embed: done
   epic-6-retrospective: optional
 
   epic-7: in-progress
-  7-1-rest-versioned-idempotency: ready-for-dev
-  7-2-lifecycle-deprecation-policy: ready-for-dev
-  7-3-sandbox-tenant-scoped: ready-for-dev
+  7-1-rest-versioned-idempotency: done
+  7-2-lifecycle-deprecation-policy: done
+  7-3-sandbox-tenant-scoped: done
   epic-7-retrospective: optional
 
   epic-8: in-progress
-  8-1-metering-minimo: ready-for-dev
+  8-1-metering-minimo: done
   8-2-relatorios-valor-anti-vanity: ready-for-dev
   8-3-entitlements-alertas: ready-for-dev
   8-4-export-uso-faturacao: ready-for-dev

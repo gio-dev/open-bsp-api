@@ -7,7 +7,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import delete, select
 
 from app.auth.session_cookie import encode_payload
@@ -17,7 +17,11 @@ from app.db.models import TenantEmbedOrigin
 from app.db.session import tenant_session
 from app.embed.allowlist import tenant_has_embed_origin
 from app.embed.origins import normalize_browser_origin
-from app.tenancy.deps import TenantUserContext, console_org_admin_context
+from app.tenancy.deps import (
+    TenantUserContext,
+    console_org_admin_context,
+    console_tenant_user_context,
+)
 
 router = APIRouter(prefix="/me/embed", tags=["embed"])
 
@@ -28,6 +32,59 @@ _RESPONSES = {
     422: {"model": CanonicalValidationErrorResponse},
     503: {"model": CanonicalErrorResponse},
 }
+
+
+class EmbedA11yStatusResponse(BaseModel):
+    """Metadados de acompanhamento a11y (Story 6.4); sem valor legal nem auditoria."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    wcag_target: str = Field(
+        description=(
+            "Alvo de produto UX (WCAG). Nao substitui avaliacao humana "
+            "juridico-tecnica."
+        ),
+    )
+    spa_embed_route: str = Field(description="Rota SPA do painel iframe.")
+    audited_journeys: str = Field(
+        description="Roteiros embutidos no release (resumo texto).",
+    )
+    tooling_note: str = Field(
+        description="Automacao registada para CI/smoke.",
+    )
+
+
+_EMBED_JOURNEYS_NOTE = (
+    "Prioridades: falta token; loading; ok; erro API; sessao expirada (refresh); "
+    "texto FR30 na vista ok. Evidencia: "
+    "_bmad-output/implementation-artifacts/6-4-embed-a11y-evidence-checklist.md."
+)
+_EMBED_TOOLING_NOTE = (
+    "CI: Vitest + jest-axe (axe-core) sobre need_token, loading, ok, erro, refresh; "
+    "regra color-contrast desactivada em JSDOM (ver checklist: validacao browser). "
+    "Nao substitui auditoria humana nem axe no Chrome (modo claro/escuro)."
+)
+
+
+@router.get(
+    "/a11y-status",
+    response_model=EmbedA11yStatusResponse,
+    responses={
+        401: {"model": CanonicalErrorResponse},
+        503: {"model": CanonicalErrorResponse},
+    },
+    summary="Metadados a11y do embed (CI/dashboard; nao substitui auditoria humana).",
+)
+async def get_embed_a11y_status(
+    ctx: Annotated[TenantUserContext, Depends(console_tenant_user_context)],
+) -> EmbedA11yStatusResponse:
+    _ = ctx
+    return EmbedA11yStatusResponse(
+        wcag_target="WCAG 2.2 Level AA (objectivo de produto).",
+        spa_embed_route="/embed/panel",
+        audited_journeys=_EMBED_JOURNEYS_NOTE,
+        tooling_note=_EMBED_TOOLING_NOTE,
+    )
 
 
 class EmbedOriginsResponse(BaseModel):

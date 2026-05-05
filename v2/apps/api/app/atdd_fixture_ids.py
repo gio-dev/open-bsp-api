@@ -15,5 +15,5 @@ ATDD_INBOX_CONVERSATION_ID: str = derived_conversation_id(
     "15550009999",
 )
 
-# Fixture Story 6.3 (preferences path seg mento URL).
-ATDD_CONTACT_PREFERENCES_ID: str = "atdd-contact"
+# Mesmo wa_id que inbox ATDD; PK preferences = digitos normalizados (gate outbound).
+ATDD_CONTACT_PREFERENCES_ID: str = "15550009999"

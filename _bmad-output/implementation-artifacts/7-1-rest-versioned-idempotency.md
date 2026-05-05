@@ -1,7 +1,7 @@
 ---
 story_key: 7-1-rest-versioned-idempotency
 epic: epic-7
-status: ready-for-dev
+status: done
 vs_validated: true
 vs_date: 2026-04-24
 atdd_ready: true
@@ -27,10 +27,21 @@ Contexto completo em `epics.md`. **Foco DS:** Contrato integrador; headers e JSO
 
 ## Tasks / Subtasks
 
-- [ ] Modelo + Alembic com `tenant_id` e RLS onde houver dados.
-- [ ] API `/v1/...` + OpenAPI; erros canonicos (story 1.1).
-- [ ] Admin-web quando houver UI (Chakra, UX-DR).
-- [ ] pytest integracao; ATDD em `v2/apps/api/tests/atdd/test_epic7_story71_rest_idempotency_atdd.py`
+- [x] Modelo + idempotencia: unicidade `(tenant_id, idempotency_key)` em `outbound_whatsapp_messages` + sessao tenant (RLS); sem migracao dedicada 7.1.
+- [x] API `/v1/...` + OpenAPI; erros canonicos (story 1.1); `Retry-After` em 429/503 para `POST /v1/me/messages/send`; `FR36` em `FastAPI(description=...)`.
+- [x] Admin-web: **N/A** nesta historia (sem UI obrigatoria).
+- [x] ATDD/policy: `tests/atdd/test_epic7_story71_rest_idempotency_atdd.py` (OpenAPI + smoke duplicado com DB), `tests/policy/test_openapi_gate.py` (`messages/send`).
+
+### Ficheiros tocados (DS)
+
+- `v2/apps/api/app/api/routes/me_messages.py` ? `_MSG_RESPONSES` (429/503 + Retry-After), OpenAPI for `Idempotency-Key` and idempotency text.
+- `v2/apps/api/app/main.py` ? global `description` (FR35/FR36); `messages` tag (7.1).
+- `v2/apps/api/tests/policy/test_openapi_gate.py` ? gate for `messages/send` (202, 429, Retry-After, Idempotency-Key; `info.description` mentions `/v1`).
+- `v2/apps/api/tests/atdd/test_epic7_story71_rest_idempotency_atdd.py` ? asserts on `/v1/me/messages/send`.
+
+### Politica HTTP idempotencia (implementacao actual)
+
+`POST /v1/me/messages/send` devolve **202** com mesmo corpo quando a chave repetida encontra fila/registo existente; **409** em conflito de corrida/`IntegrityError` sem linha recuperavel (`idempotent send conflict`). OpenAPI descreve este contrato em `openapi_extra`.
 
 ## Party Mode (CS)
 
@@ -69,7 +80,9 @@ Contexto completo em `epics.md`. **Foco DS:** Contrato integrador; headers e JSO
 
 ## Testing Requirements
 
-- `v2/apps/api/tests/atdd/test_epic7_story71_rest_idempotency_atdd.py`
+- **ATDD (epic7):** `v2/apps/api/tests/atdd/test_epic7_story71_rest_idempotency_atdd.py` ? contrato OpenAPI (`/v1`, `Idempotency-Key`, 401/429/503 + `Retry-After`) e, com Postgres (`api-ci`), dois `POST` com a mesma chave devolvem o mesmo `id`.
+- **Policy:** `tests/policy/test_openapi_gate.py` ? gate amplo em `messages/send`.
+- **Integracao (Story 3.2):** `tests/integration/test_story32_outbound_send.py` ? cenarios outbound (incl. `test_send_idempotency_returns_same_id`); mantido como suite de regresao profunda.
 
 ## References
 
@@ -81,3 +94,5 @@ Contexto completo em `epics.md`. **Foco DS:** Contrato integrador; headers e JSO
 ## Change Log
 
 - 2026-04-24: **[CS+VS+AT]** materializado no fluxo por story (epicos 7-10 / F2 / F3).
+- 2026-05-05: **DS** contrato OpenAPI 7.1 (`/v1`, `Idempotency-Key`, 401/429/503 + `Retry-After`, 202 documentado); ATDD/policy apertados.
+- 2026-05-06: **DS** CR Party Mode: `status` e sprint **done**; ATDD com assercao 503+`Retry-After`; smoke idempotencia com DB; matriz de testes na story; tasks/quadradinhos alinhados.
